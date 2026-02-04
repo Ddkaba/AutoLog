@@ -73,5 +73,6 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
 
     implementation(libs.timber)
+    implementation("androidx.compose.material:material-icons-extended")
 
 }

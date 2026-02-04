@@ -1,5 +1,6 @@
 package com.example.autolog_20.ui.theme.data.api
 
+import com.example.autolog_20.ui.theme.data.model.CarResponse
 import com.example.autolog_20.ui.theme.data.model.LoginRequest
 import com.example.autolog_20.ui.theme.data.model.LoginResponse
 import com.example.autolog_20.ui.theme.data.model.RefreshRequest
@@ -8,6 +9,7 @@ import com.example.autolog_20.ui.theme.data.model.RegisterRequest
 import com.example.autolog_20.ui.theme.data.model.RegisterResponse
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.POST
 
 interface AuthApi {
@@ -26,6 +28,9 @@ interface AuthApi {
     suspend fun refreshToken(
         @Body request: RefreshRequest
     ): retrofit2.Response<RefreshResponse>
+
+    @GET("api/my-cars/")
+    suspend fun getMyCars(): Response<List<CarResponse>>
 
     companion object {
         const val BASE_URL = "http://10.0.2.2:8000/"

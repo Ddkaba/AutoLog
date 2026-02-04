@@ -12,6 +12,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.autolog_20.ui.theme.AutoLogTheme
 import com.example.autolog_20.ui.theme.BackgroundDark
 import com.example.autolog_20.ui.theme.data.locale.TokenManager
+import com.example.autolog_20.ui.theme.data.screen.AddCarScreen
 import com.example.autolog_20.ui.theme.data.screen.LoginScreen
 import com.example.autolog_20.ui.theme.data.screen.MainScreen
 import com.example.autolog_20.ui.theme.data.screen.RegisterScreen
@@ -36,7 +37,8 @@ class MainActivity : ComponentActivity() {
                     ) {
                         composable("login") { LoginScreen(navController) }
                         composable("register") { RegisterScreen(navController) }
-                        composable("main") { MainScreen() }
+                        composable("main") { MainScreen(navController) }
+                        composable("add_car") { AddCarScreen(navController) }
                     }
                 }
             }
