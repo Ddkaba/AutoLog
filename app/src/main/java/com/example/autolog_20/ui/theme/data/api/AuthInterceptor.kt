@@ -21,7 +21,6 @@ class AuthInterceptor(
     override fun intercept(chain: Interceptor.Chain): OkHttpResponse {
         var request: Request = chain.request()
 
-        // Добавляем токен, если он есть
         val accessToken = TokenManager.getAccessToken()
         if (!accessToken.isNullOrBlank()) {
             request = request.newBuilder()
@@ -31,7 +30,6 @@ class AuthInterceptor(
 
         var response: OkHttpResponse = chain.proceed(request)
 
-        // Если 401 → пробуем refresh
         if (response.code == 401) {
             synchronized(refreshLock) {
                 val currentAccess = TokenManager.getAccessToken()
@@ -59,17 +57,13 @@ class AuthInterceptor(
                     }
                 }
             }
-            // Если refresh не удался → возвращаем исходный 401
-            // (или можно бросить исключение / обработать разлогин)
+            TokenManager.clearTokens()
+            throw RefreshTokenFailedException("Не удалось обновить токен. Пожалуйста, войдите заново.")
         }
 
         return response
     }
 
-    /**
-     * Пытается обновить access-токен
-     * @return true если успешно
-     */
     private fun refreshToken(): Boolean {
         val refreshToken = TokenManager.getRefreshToken() ?: return false
 
