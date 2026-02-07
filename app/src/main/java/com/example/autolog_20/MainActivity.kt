@@ -16,6 +16,7 @@ import com.example.autolog_20.ui.theme.data.screen.AddCarScreen
 import com.example.autolog_20.ui.theme.data.screen.LoginScreen
 import com.example.autolog_20.ui.theme.data.screen.MainScreen
 import com.example.autolog_20.ui.theme.data.screen.RegisterScreen
+import com.example.autolog_20.ui.theme.data.screen.StartupScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,8 +34,9 @@ class MainActivity : ComponentActivity() {
                 ) {
                     NavHost(
                         navController = navController,
-                        startDestination = if (TokenManager.isLoggedIn()) "main" else "login"
+                        startDestination = "startup"
                     ) {
+                        composable("startup") { StartupScreen(navController) }
                         composable("login") { LoginScreen(navController) }
                         composable("register") { RegisterScreen(navController) }
                         composable("main") { MainScreen(navController) }
