@@ -74,5 +74,9 @@ dependencies {
 
     implementation(libs.timber)
     implementation("androidx.compose.material:material-icons-extended")
+    implementation("com.google.android.gms:play-services-location:21.0.1")
+    implementation("com.google.accompanist:accompanist-permissions:0.34.0")
+
+
 
 }

@@ -1,5 +1,6 @@
 package com.example.autolog_20.ui.theme.data.screen
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,11 +15,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -27,19 +33,26 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -48,13 +61,13 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import com.example.autolog_20.ui.theme.data.api.RetrofitClient
 import com.example.autolog_20.ui.theme.data.model.CarResponse
 import com.example.autolog_20.ui.theme.data.model.MainUiState
 import com.example.autolog_20.ui.theme.data.model.MainViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
@@ -72,6 +85,9 @@ fun MainScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    // Состояние для показа Bottom Sheet
+    var showAddOptions by remember { mutableStateOf(false) }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -81,16 +97,13 @@ fun MainScreen(
                     IconButton(onClick = { viewModel.logout(navController) }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                            contentDescription = "Выход из аккаунта",
+                            contentDescription = "Выход",
                             tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
                 },
                 actions = {
-                    IconButton(onClick = {
-                        // Переход на экран добавления авто (заглушка)
-                        navController.navigate("add_car")
-                    }) {
+                    IconButton(onClick = { showAddOptions = true }) {
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = "Добавить авто"
@@ -106,70 +119,156 @@ fun MainScreen(
             )
         }
     ) { padding ->
-        when (val state = uiState) {
-            is MainUiState.Loading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
+        Box(modifier = Modifier.padding(padding)) {
+            when (val state = uiState) {
+                is MainUiState.Loading -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
                 }
-            }
 
-            is MainUiState.Empty -> {
-                EmptyCarsContent(
-                    modifier = Modifier.padding(padding),
-                    onAddClick = { navController.navigate("add_car") }
-                )
-            }
+                is MainUiState.Empty -> {
+                    EmptyCarsContent(
+                        modifier = Modifier.fillMaxSize(),
+                        onAddClick = { showAddOptions = true }
+                    )
+                }
 
-            is MainUiState.Success -> {
-                CarsList(
-                    cars = state.cars,
-                    modifier = Modifier.padding(padding)
-                )
-            }
+                is MainUiState.Success -> {
+                    CarsList(
+                        cars = state.cars,
+                        navController = navController,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
 
-            is MainUiState.Error -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = state.message,
-                            color = MaterialTheme.colorScheme.error,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { viewModel.loadCars() }) {
-                            Text("Повторить")
+                is MainUiState.Error -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = state.message,
+                                color = MaterialTheme.colorScheme.error,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(onClick = { viewModel.loadCars() }) {
+                                Text("Повторить")
+                            }
                         }
                     }
                 }
+
+                MainUiState.Unauthorized -> {
+                    LaunchedEffect(Unit) {
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Сессия истекла. Войдите заново.")
+                        }
+                        delay(1500)
+                        navController.navigate("login") {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
+            }
+        }
+
+        // ← Вот здесь отображается Bottom Sheet
+        if (showAddOptions) {
+            ModalBottomSheet(
+                onDismissRequest = { showAddOptions = false },
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false),
+                containerColor = MaterialTheme.colorScheme.surface,
+                tonalElevation = 8.dp
+            ) {
+                AddCarOptionsBottomSheet(
+                    onDismiss = { showAddOptions = false },
+                    onVinClick = {
+                        showAddOptions = false
+                        navController.navigate("add_car_vin")
+                    },
+                    onScanStsClick = {
+                        showAddOptions = false
+                        navController.navigate("add_car_scan_sts")
+                    },
+                    onManualClick = {
+                        showAddOptions = false
+                        navController.navigate("add_car_manual")
+                    }
+                )
+            }
+        }
+    }
+}
+
+
+
+@Composable
+private fun CarsList(
+    cars: List<CarResponse>,
+    navController: NavController,
+    modifier: Modifier = Modifier
+) {
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(cars) { car ->
+            CarCard(car = car, modifier = modifier, navController = navController)
+        }
+    }
+}
+
+@Composable
+private fun CarCard(
+    car: CarResponse,
+    navController: NavController,
+    modifier: Modifier = Modifier
+){
+    Card(
+        onClick = { navController.navigate("car_details/${car.numberPlate}") },
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.DirectionsCar,
+                contentDescription = null,
+                modifier = Modifier.size(48.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "${car.brand} ${car.model}",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = car.numberPlate,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
 
-            MainUiState.Unauthorized -> {
-                LaunchedEffect(Unit) {
-                    scope.launch {
-                        snackbarHostState.showSnackbar("Сессия истекла. Войдите заново.")
-                    }
-                    delay(1500)
-                    navController.navigate("login") {
-                        popUpTo(0) { inclusive = true }
-                    }
-                }
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            }
+            // Можно добавить иконку меню / кликабельность позже
+            // IconButton(onClick = { /* ... */ }) { Icon(Icons.Default.MoreVert, null) }
         }
     }
 }
@@ -210,60 +309,99 @@ private fun EmptyCarsContent(
 }
 
 @Composable
-private fun CarsList(
-    cars: List<CarResponse>,
-    modifier: Modifier = Modifier
+fun AddCarOptionsBottomSheet(
+    onDismiss: () -> Unit,
+    onVinClick: () -> Unit,
+    onScanStsClick: () -> Unit,
+    onManualClick: () -> Unit
 ) {
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        items(cars) { car ->
-            CarCard(car = car)
+        Text(
+            text = "Добавить автомобиль",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
+
+        AddOptionItem(
+            icon = Icons.Default.QrCodeScanner,
+            title = "Ввести VIN",
+            description = "Через 17-значный код",
+            onClick = onVinClick
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        AddOptionItem(
+            icon = Icons.Default.CameraAlt,
+            title = "Сканировать СТС",
+            description = "Через камеру телефона",
+            onClick = onScanStsClick
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        AddOptionItem(
+            icon = Icons.Default.Edit,
+            title = "Заполнить вручную",
+            description = "Марка, модель, год, номер и т.д.",
+            onClick = onManualClick
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        TextButton(onClick = onDismiss) {
+            Text("Отмена", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
 @Composable
-private fun CarCard(car: CarResponse) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+private fun AddOptionItem(
+    icon: ImageVector,
+    title: String,
+    description: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() },
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
     ) {
         Row(
             modifier = Modifier
-                .fillMaxWidth()
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Default.DirectionsCar,
+                imageVector = icon,
                 contentDescription = null,
-                modifier = Modifier.size(48.dp),
-                tint = MaterialTheme.colorScheme.primary
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(32.dp)
             )
-
             Spacer(modifier = Modifier.width(16.dp))
-
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "${car.brand} ${car.model}",
+                    text = title,
                     style = MaterialTheme.typography.titleMedium
                 )
-                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = car.numberPlate,
+                    text = description,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-
-            // Можно добавить иконку меню / кликабельность позже
-            // IconButton(onClick = { /* ... */ }) { Icon(Icons.Default.MoreVert, null) }
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
