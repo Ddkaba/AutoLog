@@ -76,6 +76,16 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import android.Manifest
+import android.R.attr.subtitle
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.AcUnit
+import androidx.compose.material.icons.filled.Autorenew
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 
 @Composable
 fun CarHeader(car: CarDetailResponse) {
@@ -234,6 +244,7 @@ fun CarDetailsScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val showTireDialog by viewModel.showTireDialog.collectAsStateWithLifecycle()
     val tireRecommendation by viewModel.tireRecommendation.collectAsStateWithLifecycle()
+    var expandedTires by remember { mutableStateOf(false) }
 
     val locationPermissionsState = rememberMultiplePermissionsState(
         listOf(
@@ -260,6 +271,7 @@ fun CarDetailsScreen(
     var expandedTo by remember { mutableStateOf(false) }
     var expandedExpenses by remember { mutableStateOf(false) }
     var expandedMileage by remember { mutableStateOf(false) }
+    var showTireSelectionSheet by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -312,21 +324,63 @@ fun CarDetailsScreen(
             }
 
             FeatureTile(
-                title = "Замена резины",
+                title = "Покрышки",
                 subtitle = when {
+                    TokenManager.shouldShowTireDialog() -> "Укажите тип резины"
                     tireRecommendation == null -> "Проверка..."
                     tireRecommendation?.shouldChangeTo != tireRecommendation?.currentTires ->
                         "Рекомендуется смена! ${tireRecommendation?.recommendation}"
-
-                    else -> "Всё в порядке (${tireRecommendation?.currentTires})"
+                    else -> "Всё в порядке"
                 },
                 icon = painterResource(id = R.drawable.ic_action_name),
                 color = TileTires,
-                expanded = false,
-                onExpandChange = {},
-                onClick = { navController.navigate("tires/${numberPlate}") },
-                isWarning = tireRecommendation?.shouldChangeTo != tireRecommendation?.currentTires
-            )
+                expanded = expandedTires,
+                onExpandChange = { expandedTires = it },
+                onClick = {
+                    showTireSelectionSheet = true
+                    expandedTires = false
+                },
+                isWarning = TokenManager.shouldShowTireDialog() || (tireRecommendation?.shouldChangeTo != tireRecommendation?.currentTires)
+            ) {
+                val currentTires = TokenManager.getCurrentTires()
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = when (currentTires) {
+                            "summer"    -> "Сейчас установлена: Летняя резина"
+                            "winter"    -> "Сейчас установлена: Зимняя резина"
+                            "allseason" -> "Сейчас установлена: Всесезонная резина"
+                            else        -> "Тип резины не указан"
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (currentTires == null)
+                            MaterialTheme.colorScheme.error
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            if (showTireSelectionSheet) {
+                ModalBottomSheet(
+                    onDismissRequest = { showTireSelectionSheet = false },
+                    sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+                ) {
+                    TireTypeSelectionSheet(
+                        currentType = TokenManager.getCurrentTires(),
+                        onTypeSelected = { selectedType ->
+                            TokenManager.setCurrentTires(selectedType)
+                            showTireSelectionSheet = false
+                            viewModel.checkTireRecommendation()
+                        },
+                        onDismiss = { showTireSelectionSheet = false }
+                    )
+                }
+            }
 
             FeatureTile(
                 title = "Расходы",
@@ -433,5 +487,90 @@ fun CarDetailsScreen(
         }
     }
 }
+
+@Composable
+fun TireTypeSelectionSheet(
+    currentType: String?,
+    onTypeSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val types = listOf(
+        Triple("summer",    "Летняя",    Icons.Default.WbSunny),
+        Triple("winter",    "Зимняя",    Icons.Default.AcUnit),
+        Triple("allseason", "Всесезонная", Icons.Default.Autorenew)
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = if (currentType == null) "Выберите тип резины" else "Изменить тип резины",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier.padding(bottom = 24.dp)
+        )
+
+        types.forEach { (type, label, icon) ->
+            val isSelected = currentType == type
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+                    .clickable { onTypeSelected(type) },
+                shape = RoundedCornerShape(16.dp),
+                color = if (isSelected)
+                    MaterialTheme.colorScheme.primaryContainer
+                else
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                tonalElevation = if (isSelected) 4.dp else 0.dp,
+                border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(40.dp)
+                    )
+
+                    Spacer(modifier = Modifier.width(20.dp))
+
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    )
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    if (isSelected) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = "Выбрано",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        TextButton(onClick = onDismiss) {
+            Text("Отмена")
+        }
+    }
+}
+
+
 
 

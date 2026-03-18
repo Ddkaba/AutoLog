@@ -135,6 +135,11 @@ class CarDetailsViewModel(
         checkTireRecommendation()
     }
 
+    fun clearTireRecommendation() {
+        _tireRecommendation.value = null
+        Log.d("CarDetailsVM", "Всесезонная резина выбрана → рекомендация очищена")
+    }
+
     fun checkTireRecommendation() {
         viewModelScope.launch {
             val currentTires = TokenManager.getCurrentTires() ?: run {
