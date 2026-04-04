@@ -1,7 +1,9 @@
 package com.example.autolog_20.ui.theme.data.api
 
+import com.example.autolog_20.ui.theme.data.model.AddExpenseRequest
 import com.example.autolog_20.ui.theme.data.model.CarDetailResponse
 import com.example.autolog_20.ui.theme.data.model.CarResponse
+import com.example.autolog_20.ui.theme.data.model.ExpensesResponse
 import com.example.autolog_20.ui.theme.data.model.LoginRequest
 import com.example.autolog_20.ui.theme.data.model.LoginResponse
 import com.example.autolog_20.ui.theme.data.model.RecommendationRequest
@@ -60,6 +62,22 @@ interface AuthApi {
     suspend fun getCarByPlate(
         @Path("number_plate") numberPlate: String
     ): Response<CarDetailResponse>
+
+    @GET("api/cars/{carId}/expenses/")
+    suspend fun getExpenses(
+        @Path("carId") carId: Int,
+        @Query("period") period: String? = null,           // all, week, month, year, custom
+        @Query("from") from: String? = null,               // YYYY-MM-DD
+        @Query("to") to: String? = null,
+        @Query("category") category: List<String> = emptyList()
+    ): Response<ExpensesResponse>
+
+    @POST("api/cars/{carId}/expenses/create/")
+    suspend fun addExpense(
+        @Path("carId") carId: Int,
+        @Body request: AddExpenseRequest
+    ): Response<Unit>   // или ваш response
+
 
     companion object {
         const val BASE_URL = "http://10.0.2.2:8000/"

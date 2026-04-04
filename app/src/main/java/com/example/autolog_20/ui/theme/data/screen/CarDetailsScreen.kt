@@ -389,7 +389,9 @@ fun CarDetailsScreen(
                 color = TileExpenses,
                 expanded = expandedExpenses,
                 onExpandChange = { expandedExpenses = it },
-                onClick = { navController.navigate("expenses/${numberPlate}") }
+                onClick = {
+                    navController.navigate("expenses/${numberPlate}")
+                }
             ) {
                 Text(
                     text = "Итого: 14 200 ₽",
