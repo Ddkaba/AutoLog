@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 class ExpensesViewModel(
     private val authApi: AuthApi,
@@ -27,6 +28,8 @@ class ExpensesViewModel(
     val totalAllTime: StateFlow<Double> = _totalAllTime.asStateFlow()
 
     private var currentCarId: Int? = null
+    var customFrom: String? = null
+    var customTo: String? = null
 
     init {
         loadCarIdAndData()
@@ -73,9 +76,13 @@ class ExpensesViewModel(
             _uiState.value = ExpensesUiState.Loading
 
             try {
+                val period = _selectedPeriod.value
+
                 val response = authApi.getExpenses(
                     carId = id,
-                    period = _selectedPeriod.value,
+                    period = period,
+                    from = if (period == "custom") customFrom else null,
+                    to = if (period == "custom") customTo else null,
                     category = _selectedCategories.value
                 )
 
@@ -98,6 +105,10 @@ class ExpensesViewModel(
 
     fun changePeriod(period: String) {
         _selectedPeriod.value = period
+        if (period != "custom") {
+            customFrom = null
+            customTo = null
+        }
         loadExpenses()
     }
 
@@ -127,9 +138,14 @@ class ExpensesViewModel(
             }
         }
     }
+    fun setCustomPeriod(from: LocalDate, to: LocalDate) {
+        _selectedPeriod.value = "custom"
+        customFrom = from.toString()
+        customTo = to.toString()
+        loadExpenses()
+    }
 }
 
-// ==================== Состояния ====================
 
 sealed interface ExpensesUiState {
     data object Loading : ExpensesUiState
