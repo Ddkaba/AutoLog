@@ -1,6 +1,5 @@
 package com.example.autolog_20.ui.theme.data.api
 
-import com.example.autolog_20.ui.theme.data.model.AddExpenseRequest
 import com.example.autolog_20.ui.theme.data.model.CarDetailResponse
 import com.example.autolog_20.ui.theme.data.model.CarResponse
 import com.example.autolog_20.ui.theme.data.model.ExpensesResponse
@@ -13,10 +12,14 @@ import com.example.autolog_20.ui.theme.data.model.RefreshResponse
 import com.example.autolog_20.ui.theme.data.model.RegisterRequest
 import com.example.autolog_20.ui.theme.data.model.RegisterResponse
 import com.example.autolog_20.ui.theme.data.model.TireResponse
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Multipart
 import retrofit2.http.POST
+import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -72,11 +75,18 @@ interface AuthApi {
         @Query("category") category: List<String> = emptyList()
     ): Response<ExpensesResponse>
 
+
+    @Multipart
     @POST("api/cars/{carId}/expenses/create/")
-    suspend fun addExpense(
+    suspend fun addExpenseWithReceipt(
         @Path("carId") carId: Int,
-        @Body request: AddExpenseRequest
-    ): Response<Unit>   // или ваш response
+        @Part("category") category: RequestBody,
+        @Part("amount") amount: RequestBody,
+        @Part("date") date: RequestBody,
+        @Part("description") description: RequestBody? = null,
+        @Part("category_id") categoryId: RequestBody,
+        @Part receipt_photo: MultipartBody.Part? = null
+    ): Response<Unit>
 
 
     companion object {

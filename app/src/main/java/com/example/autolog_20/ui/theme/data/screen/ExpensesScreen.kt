@@ -1,4 +1,8 @@
 package com.example.autolog_20.ui.theme.data.screen
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,8 +29,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -35,6 +40,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DateRangePicker
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.HorizontalDivider
@@ -65,11 +71,13 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -91,16 +99,23 @@ import com.example.autolog_20.ui.theme.PastelExpenseBackground
 @Composable
 fun ExpensesScreen(
     navController: NavController,
-    numberPlate: String,
-    viewModel: ExpensesViewModel = viewModel(
+    numberPlate: String
+) {
+    val context = LocalContext.current
+
+    val viewModel: ExpensesViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return ExpensesViewModel(RetrofitClient.api, numberPlate) as T
+                return ExpensesViewModel(
+                    RetrofitClient.api,
+                    numberPlate,
+                    context
+                ) as T
             }
         }
     )
-) {
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedPeriod by viewModel.selectedPeriod.collectAsStateWithLifecycle()
     val totalAllTime by viewModel.totalAllTime.collectAsStateWithLifecycle()
@@ -113,8 +128,8 @@ fun ExpensesScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     var selectedExpense by remember { mutableStateOf<ExpenseItem?>(null) }
+    var receiptUrl by remember { mutableStateOf<String?>(null) }
     val dateRangePickerState = rememberDateRangePickerState()
-
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -243,7 +258,7 @@ fun ExpensesScreen(
             expense = selectedExpense!!,
             onDismiss = { selectedExpense = null },
             onViewReceipt = { photoUrl ->
-                // TODO: открыть изображение (например через Coil или browser)
+                receiptUrl = photoUrl
                 selectedExpense = null
             }
         )
@@ -270,10 +285,23 @@ fun ExpensesScreen(
     if (showAddDialog) {
         AddExpenseDialog(
             onDismiss = { showAddDialog = false },
-            onAdd = { category, amount, date ->
-                viewModel.addExpense(category, amount, date)
-                showAddDialog = false
+            onAdd = { category, categoryId, amount, date, description, photoUri ->
+                viewModel.addExpenseWithReceipt(
+                    category = category,
+                    categoryId = categoryId,
+                    amount = amount,
+                    date = date,
+                    description = description,
+                    photoUri = photoUri
+                )
             }
+        )
+    }
+
+    if (receiptUrl != null) {
+        ReceiptWebViewDialog(
+            imageUrl = receiptUrl!!,
+            onDismiss = { receiptUrl = null }
         )
     }
 
@@ -358,15 +386,6 @@ fun ExpensesScreen(
                 }
             }
         }
-    }
-
-    if (showAddDialog) {
-        AddExpenseDialog(
-            onDismiss = { showAddDialog = false },
-            onAdd = { category, amount, date ->
-                viewModel.addExpense(category, amount, date)
-            }
-        )
     }
 }
 
@@ -544,45 +563,90 @@ fun ErrorContent(
 @Composable
 fun AddExpenseDialog(
     onDismiss: () -> Unit,
-    onAdd: (category: String, amount: Double, date: String) -> Unit
+    onAdd: (category: String, categoryId: Int, amount: Double, date: String, description: String?, photoUri: Uri?) -> Unit
 ) {
-    var category by remember { mutableStateOf("Топливо") }
+    var selectedCategory by remember { mutableStateOf("Топливо") }
+    var selectedCategoryId by remember { mutableStateOf(3) }   // 3 = Топливо
     var amount by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(LocalDate.now().toString()) }
     var description by remember { mutableStateOf("") }
+    var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
+
+    var categoryMenuExpanded by remember { mutableStateOf(false) }
+
+    val photoPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri -> selectedPhotoUri = uri }
+
+    val categories = listOf(
+        1 to "Техническое обслуживание",
+        2 to "Ремонт",
+        3 to "Топливо",
+        4 to "Страхование",
+        5 to "Налоги и пошлины",
+        6 to "Мойка и уход",
+        7 to "Парковка и хранение",
+        8 to "Штрафы",
+        9 to "Запчасти и расходники",
+        10 to "Прочие расходы"
+    )
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Новый расход") },
         text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-            ) {
-                // Категория
-                Text("Категория", style = MaterialTheme.typography.labelMedium)
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+
+                // === Выпадающий список категорий ===
+                Text(
+                    text = "Категория",
+                    style = MaterialTheme.typography.labelMedium
+                )
                 Spacer(Modifier.height(4.dp))
+
                 ExposedDropdownMenuBox(
-                    expanded = false, // можно сделать полноценный dropdown позже
-                    onExpandedChange = { }
+                    expanded = categoryMenuExpanded,
+                    onExpandedChange = { categoryMenuExpanded = it }
                 ) {
                     OutlinedTextField(
-                        value = category,
+                        value = selectedCategory,
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Выберите категорию") },
-                        trailingIcon = { Icon(Icons.Default.ArrowDropDown, null) },
-                        modifier = Modifier.fillMaxWidth()
+                        trailingIcon = {
+                            Icon(
+                                imageVector = if (categoryMenuExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = null
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
                     )
+
+                    ExposedDropdownMenu(
+                        expanded = categoryMenuExpanded,
+                        onDismissRequest = { categoryMenuExpanded = false }
+                    ) {
+                        categories.forEach { (id, name) ->
+                            DropdownMenuItem(
+                                text = { Text(name) },
+                                onClick = {
+                                    selectedCategory = name
+                                    selectedCategoryId = id
+                                    categoryMenuExpanded = false
+                                }
+                            )
+                        }
+                    }
                 }
 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(16.dp))
 
                 // Сумма
                 OutlinedTextField(
                     value = amount,
-                    onValueChange = { amount = it.filter { char -> char.isDigit() || char == '.' } },
+                    onValueChange = { amount = it.filter { c -> c.isDigit() || c == '.' } },
                     label = { Text("Сумма (₽)") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth()
@@ -600,14 +664,32 @@ fun AddExpenseDialog(
 
                 Spacer(Modifier.height(12.dp))
 
-                // Описание (опционально)
+                // Описание
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
                     label = { Text("Описание (необязательно)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    maxLines = 3
+                    maxLines = 3,
+                    modifier = Modifier.fillMaxWidth()
                 )
+
+                Spacer(Modifier.height(16.dp))
+
+                // Прикрепление чека
+                Button(
+                    onClick = { photoPicker.launch("image/*") },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (selectedPhotoUri == null) "Прикрепить чек" else "Чек прикреплён ✓")
+                }
+
+                if (selectedPhotoUri != null) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "Фото выбрано",
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         },
         confirmButton = {
@@ -615,11 +697,19 @@ fun AddExpenseDialog(
                 onClick = {
                     val amt = amount.toDoubleOrNull() ?: 0.0
                     if (amt > 0) {
-                        onAdd(category, amt, date)
+                        onAdd(
+                            selectedCategory,
+                            selectedCategoryId,
+                            amt,
+                            date,
+                            description.ifBlank { null },
+                            selectedPhotoUri
+                        )
+                        onDismiss()
                     }
                 }
             ) {
-                Text("Добавить")
+                Text("Добавить расход")
             }
         },
         dismissButton = {
@@ -629,8 +719,6 @@ fun AddExpenseDialog(
         }
     )
 }
-
-
 
 @Composable
 fun InteractiveExpensePieChart(
@@ -643,9 +731,12 @@ fun InteractiveExpensePieChart(
         return
     }
 
+    // Группируем расходы по категории
     val categorySums = expenses
         .groupBy { it.category?.name ?: "Прочие расходы" }
-        .mapValues { it.value.sumOf { exp -> exp.amount.toDoubleOrNull() ?: 0.0 } }
+        .mapValues { entry ->
+            entry.value.sumOf { it.amount.toDoubleOrNull() ?: 0.0 }
+        }
 
     val total = categorySums.values.sum()
     if (total <= 0.0) {
@@ -653,9 +744,17 @@ fun InteractiveExpensePieChart(
         return
     }
 
-    val colors = listOf(
-        Color(0xFFFF0000), Color(0xFFFF8C00), Color(0xFFFFFF00),
-        Color(0xFF00FF00), Color(0xFF00FFFF), Color(0xFF0000CD)
+    val categoryColorMap = mapOf(
+        "Техническое обслуживание" to Color(0xFFFF0000),
+        "Ремонт"                   to Color(0xFFFF8C00),
+        "Топливо"                  to Color(0xFFFFFF00),
+        "Страхование"              to Color(0xFF00FF00),
+        "Налоги и пошлины"         to Color(0xFF00FFFF),
+        "Мойка и уход"             to Color(0xFF0000CD),
+        "Парковка и хранение"      to Color(0xFF8A2BE2),
+        "Штрафы"                   to Color(0xFFFF1493),
+        "Запчасти и расходники"    to Color(0xFFF0B2AB),
+        "Прочие расходы"           to Color(0xFFF05340)
     )
 
     Canvas(
@@ -672,11 +771,12 @@ fun InteractiveExpensePieChart(
 
         var startAngle = -90f
 
-        categorySums.entries.forEachIndexed { index, entry ->
-            val sweepAngle = (entry.value / total * 360f).toFloat()
+        categorySums.entries.forEachIndexed { index, (categoryName, amount) ->
+            val sweepAngle = (amount / total * 360f).toFloat()
+            val color = categoryColorMap[categoryName] ?: Color.Gray
 
             drawArc(
-                color = colors[index % colors.size],
+                color = color,
                 startAngle = startAngle,
                 sweepAngle = sweepAngle,
                 useCenter = true,
@@ -687,14 +787,12 @@ fun InteractiveExpensePieChart(
             startAngle += sweepAngle
         }
 
-        // Внутренний круг
         drawCircle(
             color = BackgroundDark,
             radius = radius * 0.62f,
             center = center
         )
 
-        // Сумма в центре
         drawContext.canvas.nativeCanvas.apply {
             val paint = android.graphics.Paint().apply {
                 color = android.graphics.Color.WHITE
@@ -723,9 +821,18 @@ fun ExpenseCategoriesBottomSheet(
         .mapValues { it.value.sumOf { exp -> exp.amount.toDoubleOrNull() ?: 0.0 } }
 
     val total = categorySums.values.sum()
-    val colors = listOf(
-        Color(0xFFFF0000), Color(0xFFFF8C00), Color(0xFFFFFF00),
-        Color(0xFF00FF00), Color(0xFF00FFFF), Color(0xFF0000CD)
+
+    val categoryColorMap = mapOf(
+        "Техническое обслуживание" to Color(0xFFFF0000),
+        "Ремонт"                   to Color(0xFFFF8C00),
+        "Топливо"                  to Color(0xFFFFFF00),
+        "Страхование"              to Color(0xFF00FF00),
+        "Налоги и пошлины"         to Color(0xFF00FFFF),
+        "Мойка и уход"             to Color(0xFF0000CD),
+        "Парковка и хранение"      to Color(0xFF8A2BE2),
+        "Штрафы"                   to Color(0xFFFF1493),
+        "Запчасти и расходники"    to Color(0xFFF0B2AB),
+        "Прочие расходы"           to Color(0xFFF05340)
     )
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
@@ -744,21 +851,19 @@ fun ExpenseCategoriesBottomSheet(
             LazyColumn {
                 items(categorySums.entries.toList()) { (categoryName, amount) ->
                     val percentage = if (total > 0) (amount / total * 100).format(1) else "0.0"
+                    val color = categoryColorMap[categoryName] ?: Color.Gray
 
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         // Цветной индикатор
                         Box(
                             modifier = Modifier
-                                .size(20.dp)
-                                .background(
-                                    color = colors[categorySums.keys.indexOf(categoryName) % colors.size],
-                                    shape = RoundedCornerShape(4.dp)
-                                )
+                                .size(24.dp)
+                                .background(color, RoundedCornerShape(6.dp))
                         )
 
                         Spacer(modifier = Modifier.width(16.dp))
@@ -778,16 +883,19 @@ fun ExpenseCategoriesBottomSheet(
                         Text(
                             text = "${amount.format(2)} ₽",
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
-                    if (categorySums.keys.indexOf(categoryName) < categorySums.size - 1) {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
-                    }
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
+                    )
                 }
             }
-            Spacer(modifier = Modifier.height(20.dp))
+
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
@@ -1026,6 +1134,39 @@ fun ExpenseDetailBottomSheet(
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
+}
+
+@Composable
+fun ReceiptWebViewDialog(
+    imageUrl: String,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Закрыть")
+            }
+        },
+        text = {
+            AndroidView(
+                factory = { context ->
+                    android.webkit.WebView(context).apply {
+                        settings.javaScriptEnabled = true
+                        settings.loadWithOverviewMode = true
+                        settings.useWideViewPort = true
+                        settings.builtInZoomControls = true
+                        settings.displayZoomControls = false
+
+                        loadUrl(imageUrl)
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(400.dp)
+            )
+        }
+    )
 }
 
 @Composable

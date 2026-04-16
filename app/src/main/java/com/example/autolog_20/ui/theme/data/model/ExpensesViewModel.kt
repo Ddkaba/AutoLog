@@ -1,5 +1,7 @@
 package com.example.autolog_20.ui.theme.data.model
 
+import android.content.Context
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -8,11 +10,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.time.LocalDate
 
 class ExpensesViewModel(
     private val authApi: AuthApi,
-    private val numberPlate: String
+    private val numberPlate: String,
+    private val context: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ExpensesUiState>(ExpensesUiState.Loading)
@@ -117,32 +123,67 @@ class ExpensesViewModel(
         loadExpenses()
     }
 
-    fun addExpense(category: String, amount: Double, date: String) {
-        val carId = currentCarId ?: return
-
-        viewModelScope.launch {
-            try {
-                val request = AddExpenseRequest(
-                    category = category,
-                    amount = amount,
-                    date = date
-                )
-                val response = authApi.addExpense(carId, request)
-
-                if (response.isSuccessful) {
-                    loadExpenses()           // обновляем список
-                    loadAllTimeTotal(carId)  // обновляем общую сумму
-                }
-            } catch (e: Exception) {
-                Log.e("ExpensesVM", "Ошибка добавления расхода", e)
-            }
-        }
-    }
     fun setCustomPeriod(from: LocalDate, to: LocalDate) {
         _selectedPeriod.value = "custom"
         customFrom = from.toString()
         customTo = to.toString()
         loadExpenses()
+    }
+
+    fun addExpenseWithReceipt(
+        category: String,
+        categoryId: Int,
+        amount: Double,
+        date: String,
+        description: String?,
+        photoUri: Uri?
+    ) {
+        val carId = currentCarId ?: return
+
+        viewModelScope.launch {
+            try {
+                val categoryBody = category.toRequestBody("text/plain".toMediaType())
+                val categoryIdBody = categoryId.toString().toRequestBody("text/plain".toMediaType())
+                val amountBody = amount.toString().toRequestBody("text/plain".toMediaType())
+                val dateBody = date.toRequestBody("text/plain".toMediaType())
+                val descBody = description?.toRequestBody("text/plain".toMediaType())
+
+                val receiptPart = photoUri?.let { uri ->
+                    val inputStream = context.contentResolver.openInputStream(uri)
+                    val bytes = inputStream?.readBytes() ?: ByteArray(0)
+                    inputStream?.close()
+
+                    //val requestBody = bytes.toRequestBody("image/jpeg".toMediaType())
+                    val mimeType = context.contentResolver.getType(uri) ?: "image/*"
+                    val requestBody = bytes.toRequestBody(mimeType.toMediaType())
+                    MultipartBody.Part.createFormData(
+                        "receipt_photo",
+                        "receipt_${System.currentTimeMillis()}.jpg",
+                        requestBody
+                    )
+                }
+
+                val response = authApi.addExpenseWithReceipt(
+                    carId = carId,
+                    category = categoryBody,
+                    categoryId = categoryIdBody,      // ← передаём category_id
+                    amount = amountBody,
+                    date = dateBody,
+                    description = descBody,
+                    receipt_photo = receiptPart
+                )
+
+                if (response.isSuccessful) {
+                    Log.d("ExpensesVM", "Расход успешно добавлен с чеком и категорией")
+                    loadExpenses()
+                    loadAllTimeTotal(carId)
+                } else {
+                    Log.e("ExpensesVM", "Ошибка: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Log.e("ExpensesVM", "Ошибка отправки", e)
+            }
+        }
     }
 }
 
