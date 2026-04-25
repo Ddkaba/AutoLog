@@ -68,8 +68,8 @@ import com.example.autolog_20.ui.theme.TileTires
 import com.example.autolog_20.ui.theme.TileTo
 import com.example.autolog_20.ui.theme.data.api.RetrofitClient
 import com.example.autolog_20.ui.theme.data.locale.TokenManager
-import com.example.autolog_20.ui.theme.data.model.CarDetailResponse
-import com.example.autolog_20.ui.theme.data.model.CarDetailsViewModel
+import com.example.autolog_20.ui.theme.data.model.response.CarDetailResponse
+import com.example.autolog_20.ui.theme.data.model.viewmodel.CarDetailsViewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import android.content.Intent

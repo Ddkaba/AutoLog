@@ -9,6 +9,7 @@ val OnPrimary = Color.White
 val TextPrimary = Color(0xFFE5E7EB)
 val TextSecondary = Color(0xFF9CA3AF)
 val Error = Color(0xFFFCA5A5)
+val DeleteColor = Color(0xFFE73030)
 val TileTo = Color(0xFF4A6FA5)
 val TileTires = Color(0xFF6B9E78)
 val TileExpenses = Color(0xFFB07D57)

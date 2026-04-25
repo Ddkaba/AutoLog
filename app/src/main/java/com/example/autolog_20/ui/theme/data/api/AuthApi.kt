@@ -1,17 +1,22 @@
 package com.example.autolog_20.ui.theme.data.api
 
-import com.example.autolog_20.ui.theme.data.model.CarDetailResponse
-import com.example.autolog_20.ui.theme.data.model.CarResponse
-import com.example.autolog_20.ui.theme.data.model.ExpensesResponse
-import com.example.autolog_20.ui.theme.data.model.LoginRequest
-import com.example.autolog_20.ui.theme.data.model.LoginResponse
-import com.example.autolog_20.ui.theme.data.model.RecommendationRequest
-import com.example.autolog_20.ui.theme.data.model.RecommendationResponse
-import com.example.autolog_20.ui.theme.data.model.RefreshRequest
-import com.example.autolog_20.ui.theme.data.model.RefreshResponse
-import com.example.autolog_20.ui.theme.data.model.RegisterRequest
-import com.example.autolog_20.ui.theme.data.model.RegisterResponse
-import com.example.autolog_20.ui.theme.data.model.TireResponse
+import com.example.autolog_20.ui.theme.data.model.request.AddCarToUserRequest
+import com.example.autolog_20.ui.theme.data.model.request.AddMileageRequest
+import com.example.autolog_20.ui.theme.data.model.request.AddRecommendationRequest
+import com.example.autolog_20.ui.theme.data.model.request.CreateCarRequest
+import com.example.autolog_20.ui.theme.data.model.response.VinCheckResponse
+import com.example.autolog_20.ui.theme.data.model.response.CarDetailResponse
+import com.example.autolog_20.ui.theme.data.model.response.CarResponse
+import com.example.autolog_20.ui.theme.data.model.response.ExpensesResponse
+import com.example.autolog_20.ui.theme.data.model.request.LoginRequest
+import com.example.autolog_20.ui.theme.data.model.response.LoginResponse
+import com.example.autolog_20.ui.theme.data.model.response.RecommendationResponse
+import com.example.autolog_20.ui.theme.data.model.request.RegisterRequest
+import com.example.autolog_20.ui.theme.data.model.response.AddCarToUserResponse
+import com.example.autolog_20.ui.theme.data.model.response.CarAddResponse
+import com.example.autolog_20.ui.theme.data.model.response.RegisterResponse
+import com.example.autolog_20.ui.theme.data.model.response.TireResponse
+import com.example.autolog_20.ui.theme.data.model.response.VinInfoResponse
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.Response
@@ -35,11 +40,6 @@ interface AuthApi {
         @Body request: RegisterRequest
     ): Response<RegisterResponse>
 
-    @POST("api/token/refresh/")
-    suspend fun refreshToken(
-        @Body request: RefreshRequest
-    ): retrofit2.Response<RefreshResponse>
-
     @GET("api/my-cars/")
     suspend fun getMyCars(): Response<List<CarResponse>>
 
@@ -51,7 +51,7 @@ interface AuthApi {
     @POST("api/cars/{carId}/recommendations/")
     suspend fun addRecommendation(
         @Path("carId") carId: Int,
-        @Body request: RecommendationRequest
+        @Body request: AddRecommendationRequest
     ): Response<Unit>
 
     @GET("api/tires/recommend/")
@@ -86,6 +86,32 @@ interface AuthApi {
         @Part("description") description: RequestBody? = null,
         @Part("category_id") categoryId: RequestBody,
         @Part receipt_photo: MultipartBody.Part? = null
+    ): Response<Unit>
+
+    @GET("api/vin-info/")
+    suspend fun getVinInfo(
+        @Query("vin") vin: String
+    ): Response<VinInfoResponse>
+
+    @GET("api/cars/vin/{vin}/")
+    suspend fun checkVinExists(
+        @Path("vin") vin: String
+    ): Response<VinCheckResponse>
+
+    @POST("api/cars/")
+    suspend fun addCar(
+        @Body carData: CreateCarRequest
+    ): Response<CarAddResponse>
+
+    @POST("api/my-cars/")
+    suspend fun addCarToUser(
+        @Body request: AddCarToUserRequest
+    ): Response<AddCarToUserResponse>
+
+    @POST("api/cars/{carId}/mileage/create/")
+    suspend fun addMileageRecord(
+        @Path("carId") carId: Int,
+        @Body request: AddMileageRequest
     ): Response<Unit>
 
 

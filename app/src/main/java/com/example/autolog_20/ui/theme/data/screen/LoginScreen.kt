@@ -34,7 +34,7 @@ import com.example.autolog_20.ui.theme.PrimaryVariant
 import com.example.autolog_20.ui.theme.TextPrimary
 import com.example.autolog_20.ui.theme.data.api.RetrofitClient
 import com.example.autolog_20.ui.theme.data.locale.TokenManager
-import com.example.autolog_20.ui.theme.data.model.LoginRequest
+import com.example.autolog_20.ui.theme.data.model.request.LoginRequest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

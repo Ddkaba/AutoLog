@@ -1,4 +1,4 @@
-package com.example.autolog_20.ui.theme.data.screen
+ package com.example.autolog_20.ui.theme.data.screen
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column

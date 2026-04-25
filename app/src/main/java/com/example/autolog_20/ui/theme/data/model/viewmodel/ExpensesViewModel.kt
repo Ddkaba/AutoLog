@@ -1,4 +1,4 @@
-package com.example.autolog_20.ui.theme.data.model
+package com.example.autolog_20.ui.theme.data.model.viewmodel
 
 import android.content.Context
 import android.net.Uri
@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.autolog_20.ui.theme.data.api.AuthApi
+import com.example.autolog_20.ui.theme.data.model.ExpenseItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

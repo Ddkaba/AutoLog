@@ -1,5 +1,4 @@
 package com.example.autolog_20.ui.theme.data.screen
-import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -89,8 +88,8 @@ import com.example.autolog_20.ui.theme.SurfaceDark
 import com.example.autolog_20.ui.theme.TileExpenses
 import com.example.autolog_20.ui.theme.data.api.RetrofitClient
 import com.example.autolog_20.ui.theme.data.model.ExpenseItem
-import com.example.autolog_20.ui.theme.data.model.ExpensesUiState
-import com.example.autolog_20.ui.theme.data.model.ExpensesViewModel
+import com.example.autolog_20.ui.theme.data.model.viewmodel.ExpensesUiState
+import com.example.autolog_20.ui.theme.data.model.viewmodel.ExpensesViewModel
 import java.time.LocalDate
 import java.util.Locale
 import com.example.autolog_20.ui.theme.PastelExpenseBackground

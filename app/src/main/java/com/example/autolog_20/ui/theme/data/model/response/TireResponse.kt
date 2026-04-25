@@ -1,5 +1,6 @@
-package com.example.autolog_20.ui.theme.data.model
+package com.example.autolog_20.ui.theme.data.model.response
 
+import com.example.autolog_20.ui.theme.data.model.Coordinates
 import com.google.gson.annotations.SerializedName
 
 data class TireResponse(

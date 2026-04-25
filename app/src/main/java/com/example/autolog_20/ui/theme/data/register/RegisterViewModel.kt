@@ -6,8 +6,8 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.autolog_20.ui.theme.data.api.AuthApi
-import com.example.autolog_20.ui.theme.data.model.RegisterRequest
-import com.example.autolog_20.ui.theme.data.model.RegisterResponse
+import com.example.autolog_20.ui.theme.data.model.request.RegisterRequest
+import com.example.autolog_20.ui.theme.data.model.response.RegisterResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

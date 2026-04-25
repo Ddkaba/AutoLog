@@ -1,4 +1,4 @@
-package com.example.autolog_20.ui.theme.data.model
+package com.example.autolog_20.ui.theme.data.model.viewmodel
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -15,6 +15,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.autolog_20.R
 import com.example.autolog_20.ui.theme.data.api.AuthApi
 import com.example.autolog_20.ui.theme.data.locale.TokenManager
+import com.example.autolog_20.ui.theme.data.model.CarDetailsUiState
+import com.example.autolog_20.ui.theme.data.model.response.CarDetailResponse
+import com.example.autolog_20.ui.theme.data.model.response.TireResponse
 import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -59,7 +62,7 @@ class CarDetailsViewModel(
                     val car = response.body()
                     if (car != null) {
                         _carDetail.value = car
-                        loadRecommendations(car.carId)  // ← исправлено имя поля
+                        loadRecommendations(car.carId)
                     } else {
                         _uiState.value = CarDetailsUiState.Error("Машина не найдена")
                     }
@@ -80,7 +83,9 @@ class CarDetailsViewModel(
                 if (response.isSuccessful) {
                     val recs = response.body() ?: emptyList()
                     if (recs.isEmpty()) {
-                        generateAndAddRecommendations(carId)
+                        // Рекомендаций нет - показываем пустой список или сообщение
+                        _uiState.value = CarDetailsUiState.Success(emptyList())
+                        Log.d("CarDetailsVM", "Нет рекомендаций для автомобиля ID: $carId")
                     } else {
                         _uiState.value = CarDetailsUiState.Success(recs)
                     }
@@ -94,39 +99,7 @@ class CarDetailsViewModel(
         }
     }
 
-    private suspend fun generateAndAddRecommendations(carId: Int) {
-        val recommendations = listOf(
-            RecommendationRequest(
-                carId = carId,
-                serviceType = "ТО-1",
-                recommendedMileage = 5000,
-                description = "Замена масла и фильтров"
-            ),
-            RecommendationRequest(
-                carId = carId,
-                serviceType = "ТО-2",
-                recommendedMileage = 10000,
-                description = "ТО-1 + проверка тормозов"
-            ),
-            RecommendationRequest(
-                carId = carId,
-                serviceType = "Замена ГРМ",
-                recommendedMileage = 150000,
-                description = "Ремень ГРМ + ролики"
-            )
-        )
-
-        recommendations.forEach { req ->
-            try {
-                authApi.addRecommendation(carId, req)
-                Log.d("CarDetailsVM", "Добавлена рекомендация: ${req.serviceType}")
-            } catch (e: Exception) {
-                Log.e("CarDetailsVM", "Ошибка добавления рекомендации ${req.serviceType}", e)
-            }
-        }
-
-        loadRecommendations(carId)
-    }
+    // Метод generateAndAddRecommendations полностью удален
 
     fun setTireType(tireType: String) {
         TokenManager.setCurrentTires(tireType)
@@ -197,7 +170,10 @@ class CarDetailsViewModel(
         fusedLocationClient.lastLocation
             .addOnSuccessListener { location: Location? ->
                 if (location != null) {
-                    Log.d("CarDetailsVM", "Получена локация: ${location.latitude}, ${location.longitude}")
+                    Log.d(
+                        "CarDetailsVM",
+                        "Получена локация: ${location.latitude}, ${location.longitude}"
+                    )
                     cont.resume(location)
                 } else {
                     Log.w("CarDetailsVM", "Последняя локация null")
@@ -227,7 +203,7 @@ class CarDetailsViewModel(
         val notificationId = tire.hashCode()
 
         val builder = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.ic_launcher_foreground) // замените на свою иконку
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(tire.recommendation)
             .setContentText(tire.reason)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
