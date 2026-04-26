@@ -28,6 +28,7 @@ import com.example.autolog_20.ui.theme.data.screen.ExpensesScreen
 import com.example.autolog_20.ui.theme.data.screen.LoginScreen
 import com.example.autolog_20.ui.theme.data.screen.MainScreen
 import com.example.autolog_20.ui.theme.data.screen.RegisterScreen
+import com.example.autolog_20.ui.theme.data.screen.SettingsScreen  // Добавьте этот импорт
 import com.example.autolog_20.ui.theme.data.screen.StartupScreen
 
 class MainActivity : ComponentActivity() {
@@ -70,8 +71,10 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         }
+
                         composable("maintenance/{numberPlate}") { /* MaintenanceScreen */ }
                         composable("tires/{numberPlate}") { /* TiresScreen */ }
+
                         composable("expenses/{numberPlate}") { backStackEntry ->
                             val numberPlate = backStackEntry.arguments?.getString("numberPlate") ?: ""
                             ExpensesScreen(
@@ -79,9 +82,13 @@ class MainActivity : ComponentActivity() {
                                 numberPlate = numberPlate
                             )
                         }
+
                         composable("mileage/{numberPlate}") { /* MileageScreen */ }
                         composable("services/{numberPlate}") { /* ServicesScreen */ }
 
+                        composable("settings") {
+                            SettingsScreen(navController = navController)
+                        }
                     }
                 }
             }

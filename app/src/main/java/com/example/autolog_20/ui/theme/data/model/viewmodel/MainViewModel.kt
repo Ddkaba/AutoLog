@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
 import com.example.autolog_20.ui.theme.data.api.AuthApi
 import com.example.autolog_20.ui.theme.data.locale.TokenManager
-import com.example.autolog_20.ui.theme.data.model.response.CarResponse
+import com.example.autolog_20.ui.theme.data.model.MainUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,15 +19,10 @@ class MainViewModel(
     private val _uiState = MutableStateFlow<MainUiState>(MainUiState.Loading)
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
-    private var carToDelete: CarResponse? = null
-    private val _showDeleteDialog = MutableStateFlow(false)
-    val showDeleteDialog: StateFlow<Boolean> = _showDeleteDialog.asStateFlow()
+    private val _isDeleting = MutableStateFlow(false)
+    val isDeleting: StateFlow<Boolean> = _isDeleting.asStateFlow()
 
     init {
-        loadCars()
-    }
-
-    fun onResume() {
         loadCars()
     }
 
@@ -58,26 +53,47 @@ class MainViewModel(
         }
     }
 
-    fun showDeleteConfirmation(car: CarResponse) {
-        carToDelete = car
-        _showDeleteDialog.value = true
-    }
-
-    fun hideDeleteDialog() {
-        _showDeleteDialog.value = false
-        carToDelete = null
-    }
-
-    fun deleteCar(carId: Int) {
+    fun deleteCarByNumberPlate(
+        numberPlate: String,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
         viewModelScope.launch {
+            _isDeleting.value = true
             try {
-                // TODO: реальный API
-                // val response = authApi.deleteCar(carId)
+                val carResponse = authApi.getCarByPlate(numberPlate)
 
-                loadCars()
+                if (!carResponse.isSuccessful) {
+                    onError("Автомобиль с номером $numberPlate не найден")
+                    return@launch
+                }
+
+                val carDetails = carResponse.body()
+                if (carDetails == null) {
+                    onError("Не удалось получить данные автомобиля")
+                    return@launch
+                }
+
+                val carId = carDetails.carId
+
+                val deleteResponse = authApi.deleteCar(carId)
+
+                if (deleteResponse.isSuccessful) {
+                    loadCars()
+                    onSuccess()
+                } else {
+                    val errorMessage = when (deleteResponse.code()) {
+                        401 -> "Не авторизован"
+                        403 -> "Нет прав на удаление"
+                        404 -> "Автомобиль не найден"
+                        else -> "Ошибка удаления: ${deleteResponse.code()}"
+                    }
+                    onError(errorMessage)
+                }
             } catch (e: Exception) {
-                // Обработка ошибки
-                e.printStackTrace()
+                onError("Сетевая ошибка: ${e.localizedMessage}")
+            } finally {
+                _isDeleting.value = false
             }
         }
     }
@@ -90,10 +106,3 @@ class MainViewModel(
     }
 }
 
-sealed interface MainUiState {
-    data object Loading : MainUiState
-    data object Empty : MainUiState
-    data class Success(val cars: List<CarResponse>) : MainUiState
-    data class Error(val message: String) : MainUiState
-    data object Unauthorized : MainUiState
-}

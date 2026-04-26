@@ -1,6 +1,5 @@
 package com.example.autolog_20.ui.theme.data.screen
 
-import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -78,151 +77,22 @@ import android.provider.Settings
 import android.Manifest
 import android.R.attr.subtitle
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.filled.AcUnit
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
-
-@Composable
-fun CarHeader(car: CarDetailResponse) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "${car.brand} ${car.model}",
-                style = MaterialTheme.typography.headlineMedium
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Гос. номер: ${car.numberPlate}",
-                style = MaterialTheme.typography.titleMedium
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Год выпуска: ${car.yearOfManufacture}")
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Цвет: ${car.color}")
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun FeatureTile(
-    title: String,
-    subtitle: String,
-    icon: Painter,
-    color: androidx.compose.ui.graphics.Color,
-    expanded: Boolean,
-    onExpandChange: (Boolean) -> Unit,
-    onClick: () -> Unit,
-    isWarning: Boolean = false,
-    content: @Composable (() -> Unit) = {}
-) {
-    val backgroundColor = if (isWarning) Color(0x33FF5252) else color.copy(alpha = 0.12f)
-    val borderColor = if (isWarning) Color.Red else color
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = backgroundColor),
-        border = BorderStroke(1.dp, borderColor),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    painter = icon,
-                    contentDescription = null,
-                    tint = color,
-                    modifier = Modifier.size(32.dp)
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (isWarning) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                if (content != {}) {
-                    IconButton(onClick = { onExpandChange(!expanded) }) {
-                        Icon(
-                            imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                            contentDescription = if (expanded) "Свернуть" else "Развернуть",
-                            tint = color
-                        )
-                    }
-                }
-            }
-
-            AnimatedVisibility(visible = expanded) {
-                Column(modifier = Modifier.padding(top = 12.dp)) {
-                    content()
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun TireTypeDialog(
-    onConfirm: (String) -> Unit
-) {
-    var selected by remember { mutableStateOf("summer") }
-
-    AlertDialog(
-        onDismissRequest = { /* нельзя закрыть без выбора */ },
-        title = { Text("Укажите тип установленной резины") },
-        text = {
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(
-                        selected = selected == "summer",
-                        onClick = { selected = "summer" }
-                    )
-                    Text("Летняя")
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(
-                        selected = selected == "winter",
-                        onClick = { selected = "winter" }
-                    )
-                    Text("Зимняя")
-                }
-            }
-        },
-        confirmButton = {
-            Button(onClick = { onConfirm(selected) }) {
-                Text("Сохранить")
-            }
-        }
-    )
-}
+import timber.log.Timber
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
@@ -241,10 +111,12 @@ fun CarDetailsScreen(
     )
 
     val carDetail by viewModel.carDetail.collectAsStateWithLifecycle()
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val showTireDialog by viewModel.showTireDialog.collectAsStateWithLifecycle()
     val tireRecommendation by viewModel.tireRecommendation.collectAsStateWithLifecycle()
     var expandedTires by remember { mutableStateOf(false) }
+    var showEditSheet by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     val locationPermissionsState = rememberMultiplePermissionsState(
         listOf(
@@ -263,7 +135,7 @@ fun CarDetailsScreen(
         if (locationPermissionsState.allPermissionsGranted &&
             !TokenManager.shouldShowTireDialog()
         ) {
-            Log.d("CarDetailsScreen", "Разрешения получены → запускаем проверку резины")
+            Timber.tag("CarDetailsScreen").d("Разрешения получены → запускаем проверку резины")
             viewModel.checkTireRecommendation()
         }
     }
@@ -280,6 +152,11 @@ fun CarDetailsScreen(
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { showEditSheet = true }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Редактировать")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -488,6 +365,30 @@ fun CarDetailsScreen(
             }
         }
     }
+
+    if (showEditSheet && carDetail != null) {
+        EditCarBottomSheet(
+            car = carDetail!!,
+            onDismiss = { showEditSheet = false },
+            onSave = { color, number ->
+                viewModel.updateCarDetails(
+                    color = color,
+                    numberPlate = number,
+                    onSuccess = {
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Данные успешно обновлены")
+                        }
+                        showEditSheet = false
+                    },
+                    onError = { error ->
+                        scope.launch {
+                            snackbarHostState.showSnackbar(error)
+                        }
+                    }
+                )
+            }
+        )
+    }
 }
 
 @Composable
@@ -572,6 +473,272 @@ fun TireTypeSelectionSheet(
         }
     }
 }
+
+@Composable
+fun CarHeader(car: CarDetailResponse) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "${car.brand} ${car.model}",
+                style = MaterialTheme.typography.headlineMedium
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Гос. номер: ${car.numberPlate}",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Год выпуска: ${car.yearOfManufacture}")
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Цвет: ${car.color}")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FeatureTile(
+    title: String,
+    subtitle: String,
+    icon: Painter,
+    color: androidx.compose.ui.graphics.Color,
+    expanded: Boolean,
+    onExpandChange: (Boolean) -> Unit,
+    onClick: () -> Unit,
+    isWarning: Boolean = false,
+    content: @Composable (() -> Unit) = {}
+) {
+    val backgroundColor = if (isWarning) Color(0x33FF5252) else color.copy(alpha = 0.12f)
+    val borderColor = if (isWarning) Color.Red else color
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .clickable { onClick() },
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        border = BorderStroke(1.dp, borderColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    painter = icon,
+                    contentDescription = null,
+                    tint = color,
+                    modifier = Modifier.size(32.dp)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isWarning) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                if (content != {}) {
+                    IconButton(onClick = { onExpandChange(!expanded) }) {
+                        Icon(
+                            imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = if (expanded) "Свернуть" else "Развернуть",
+                            tint = color
+                        )
+                    }
+                }
+            }
+
+            AnimatedVisibility(visible = expanded) {
+                Column(modifier = Modifier.padding(top = 12.dp)) {
+                    content()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun TireTypeDialog(
+    onConfirm: (String) -> Unit
+) {
+    var selected by remember { mutableStateOf("summer") }
+
+    AlertDialog(
+        onDismissRequest = { /* нельзя закрыть без выбора */ },
+        title = { Text("Укажите тип установленной резины") },
+        text = {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(
+                        selected = selected == "summer",
+                        onClick = { selected = "summer" }
+                    )
+                    Text("Летняя")
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(
+                        selected = selected == "winter",
+                        onClick = { selected = "winter" }
+                    )
+                    Text("Зимняя")
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onConfirm(selected) }) {
+                Text("Сохранить")
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditCarBottomSheet(
+    car: CarDetailResponse,
+    onDismiss: () -> Unit,
+    onSave: (color: String, numberPlate: String) -> Unit
+) {
+    var colorInput by remember { mutableStateOf(car.color) }
+    var numberPlateInput by remember { mutableStateOf(car.numberPlate) }
+    var colorError by remember { mutableStateOf<String?>(null) }
+    var numberPlateError by remember { mutableStateOf<String?>(null) }
+
+    fun isValidCarNumber(number: String): Boolean {
+        val regex = Regex("^[АВЕКМНОРСТУХABEKMHOPCTYX]\\d{3}[АВЕКМНОРСТУХABEKMHOPCTYX]{2}\\d{2,3}$")
+        return regex.matches(number.uppercase().trim())
+    }
+
+    fun isColorValid(color: String): Boolean {
+        return color.trim().isNotBlank() && color.trim().length >= 2
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Редактирование автомобиля",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
+
+            OutlinedTextField(
+                value = colorInput,
+                onValueChange = {
+                    colorInput = it
+                    colorError = null
+                },
+                label = { Text("Цвет") },
+                placeholder = { Text("Черный") },
+                modifier = Modifier.fillMaxWidth(),
+                isError = colorError != null,
+                supportingText = {
+                    if (colorError != null) {
+                        Text(colorError!!, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = numberPlateInput,
+                onValueChange = {
+                    numberPlateInput = it.uppercase()
+                    numberPlateError = null
+                },
+                label = { Text("Номер автомобиля") },
+                placeholder = { Text("А00АА78") },
+                modifier = Modifier.fillMaxWidth(),
+                isError = numberPlateError != null,
+                supportingText = {
+                    when {
+                        numberPlateError != null -> Text(
+                            numberPlateError!!,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        numberPlateInput.isNotBlank() && !isValidCarNumber(numberPlateInput) -> Text(
+                            "Пример правильного номера: А00АА78",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Отмена")
+                }
+
+                Button(
+                    onClick = {
+                        var hasError = false
+
+                        // Проверка цвета
+                        if (!isColorValid(colorInput)) {
+                            colorError = "Цвет не может быть пустым (минимум 2 символа)"
+                            hasError = true
+                        }
+
+                        // Проверка номера
+                        if (numberPlateInput.isBlank()) {
+                            numberPlateError = "Номер автомобиля не может быть пустым"
+                            hasError = true
+                        } else if (!isValidCarNumber(numberPlateInput)) {
+                            numberPlateError = "Некорректный формат номера"
+                            hasError = true
+                        }
+
+                        if (!hasError) {
+                            onSave(colorInput.trim(), numberPlateInput.trim().uppercase())
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    enabled = colorInput.isNotBlank() && numberPlateInput.isNotBlank()
+                ) {
+                    Text("Сохранить")
+                }
+            }
+            Spacer(modifier = Modifier.height(32.dp))
+        }
+    }
+}
+
 
 
 

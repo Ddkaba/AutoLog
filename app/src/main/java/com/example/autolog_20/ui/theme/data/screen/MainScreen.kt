@@ -66,17 +66,19 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.autolog_20.ui.theme.data.api.RetrofitClient
 import com.example.autolog_20.ui.theme.data.model.response.CarResponse
-import com.example.autolog_20.ui.theme.data.model.viewmodel.MainUiState
 import com.example.autolog_20.ui.theme.data.model.viewmodel.MainViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.gestures.*
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import com.example.autolog_20.ui.theme.DeleteColor
+import com.example.autolog_20.ui.theme.data.model.MainUiState
+import kotlinx.coroutines.CoroutineScope
 import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -152,8 +154,23 @@ fun MainScreen(
                         cars = state.cars,
                         navController = navController,
                         viewModel = viewModel,
+                        snackbarHostState = snackbarHostState,
+                        scope = scope,
                         modifier = Modifier.fillMaxSize()
                     )
+                    FloatingActionButton(
+                        onClick = { navController.navigate("settings") },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(16.dp),
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Настройки"
+                        )
+                    }
                 }
 
                 is MainUiState.Error -> {
@@ -224,6 +241,8 @@ private fun CarsList(
     cars: List<CarResponse>,
     navController: NavController,
     viewModel: MainViewModel,
+    snackbarHostState: SnackbarHostState,
+    scope: CoroutineScope,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -235,7 +254,22 @@ private fun CarsList(
             SwipeToDeleteCard(
                 car = car,
                 navController = navController,
-                onDelete = { viewModel.deleteCar(car.id) }
+                viewModel = viewModel,
+                onDelete = { numberPlate ->
+                    viewModel.deleteCarByNumberPlate(
+                        numberPlate = numberPlate,
+                        onSuccess = {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Автомобиль успешно удален")
+                            }
+                        },
+                        onError = { error ->
+                            scope.launch {
+                                snackbarHostState.showSnackbar(error)
+                            }
+                        }
+                    )
+                }
             )
         }
     }
@@ -245,12 +279,14 @@ private fun CarsList(
 private fun SwipeToDeleteCard(
     car: CarResponse,
     navController: NavController,
-    onDelete: (CarResponse) -> Unit
+    viewModel: MainViewModel,
+    onDelete: (String) -> Unit  // Передаем номер автомобиля
 ) {
     var offsetX by remember { mutableStateOf(0f) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
+    val isDeleting by viewModel.isDeleting.collectAsStateWithLifecycle()
 
     LaunchedEffect(showDeleteDialog) {
         if (!showDeleteDialog) {
@@ -267,17 +303,19 @@ private fun SwipeToDeleteCard(
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
                     onDragEnd = {
-                        if (abs(offsetX) > deleteThresholdPx) {
+                        if (abs(offsetX) > deleteThresholdPx && !isDeleting) {
                             showDeleteDialog = true
                         }
                         scope.launch {
-                            kotlinx.coroutines.delay(100)
+                            delay(100)
                             offsetX = 0f
                         }
                     },
                     onDragCancel = { offsetX = 0f },
                     onHorizontalDrag = { _, dragAmount ->
-                        offsetX = (offsetX + dragAmount).coerceIn(-maxSwipePx, 0f)
+                        if (!isDeleting) {
+                            offsetX = (offsetX + dragAmount).coerceIn(-maxSwipePx, 0f)
+                        }
                     }
                 )
             }
@@ -289,12 +327,19 @@ private fun SwipeToDeleteCard(
                 .background(DeleteColor),
             contentAlignment = Alignment.CenterEnd
         ) {
-            Icon(
-                imageVector = Icons.Default.Delete,
-                contentDescription = "Удалить",
-                tint = MaterialTheme.colorScheme.onError,
-                modifier = Modifier.padding(end = 24.dp).size(32.dp)
-            )
+            if (isDeleting) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(32.dp),
+                    color = MaterialTheme.colorScheme.onError
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Удалить",
+                    tint = MaterialTheme.colorScheme.onError,
+                    modifier = Modifier.padding(end = 24.dp).size(32.dp)
+                )
+            }
         }
 
         Box(
@@ -310,7 +355,7 @@ private fun SwipeToDeleteCard(
         }
     }
 
-    if (showDeleteDialog) {
+    if (showDeleteDialog && !isDeleting) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             title = { Text("Удаление автомобиля") },
@@ -319,17 +364,25 @@ private fun SwipeToDeleteCard(
                 Button(
                     onClick = {
                         showDeleteDialog = false
-                        onDelete(car)
+                        onDelete(car.numberPlate)  // Передаем номер
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = DeleteColor
-                    )
+                    ),
+                    enabled = !isDeleting
                 ) {
-                    Text("Удалить")
+                    if (isDeleting) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                    } else {
+                        Text("Удалить")
+                    }
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
+                TextButton(
+                    onClick = { showDeleteDialog = false },
+                    enabled = !isDeleting
+                ) {
                     Text("Отмена")
                 }
             }

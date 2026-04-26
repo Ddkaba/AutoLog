@@ -1,10 +1,12 @@
 package com.example.autolog_20.ui.theme.data.screen
+
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,12 +31,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -58,23 +64,29 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDateRangePickerState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.ViewModel
@@ -86,13 +98,17 @@ import com.example.autolog_20.ui.theme.BackgroundDark
 import com.example.autolog_20.ui.theme.PastelExpenseSubtitle
 import com.example.autolog_20.ui.theme.SurfaceDark
 import com.example.autolog_20.ui.theme.TileExpenses
+import com.example.autolog_20.ui.theme.DeleteColor
 import com.example.autolog_20.ui.theme.data.api.RetrofitClient
 import com.example.autolog_20.ui.theme.data.model.ExpenseItem
-import com.example.autolog_20.ui.theme.data.model.viewmodel.ExpensesUiState
 import com.example.autolog_20.ui.theme.data.model.viewmodel.ExpensesViewModel
 import java.time.LocalDate
 import java.util.Locale
 import com.example.autolog_20.ui.theme.PastelExpenseBackground
+import com.example.autolog_20.ui.theme.data.model.ExpensesUiState
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -119,6 +135,7 @@ fun ExpensesScreen(
     val selectedPeriod by viewModel.selectedPeriod.collectAsStateWithLifecycle()
     val totalAllTime by viewModel.totalAllTime.collectAsStateWithLifecycle()
     val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
 
     var showPeriodSheet by remember { mutableStateOf(false) }
     var showCategoriesBottomSheet by remember { mutableStateOf(false) }
@@ -129,6 +146,7 @@ fun ExpensesScreen(
     var selectedExpense by remember { mutableStateOf<ExpenseItem?>(null) }
     var receiptUrl by remember { mutableStateOf<String?>(null) }
     val dateRangePickerState = rememberDateRangePickerState()
+    var selectedExpenseForEdit by remember { mutableStateOf<ExpenseItem?>(null) }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -207,41 +225,27 @@ fun ExpensesScreen(
                     if (state.expenses.isEmpty()) {
                         EmptyExpensesContent(onAddClick = { showAddDialog = true })
                     } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            val groupedExpenses = state.expenses
-                                .groupBy { it.date }
-                                .toSortedMap(reverseOrder())
-
-                            groupedExpenses.forEach { (date, expensesOnDate) ->
-                                item(key = "header_$date") {
-                                    Text(
-                                        text = formatDateHeader(date),
-                                        style = MaterialTheme.typography.titleSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier
-                                            .padding(horizontal = 4.dp, vertical = 8.dp)
-                                    )
-                                }
-
-                                items(
-                                    items = expensesOnDate,
-                                    key = { it.expense_id }
-                                ) { expense ->
-                                    ExpenseItemCard(
-                                        expense = expense,
-                                        onClick = { selectedExpense = it }
-                                    )
-                                }
-
-                                item(key = "spacer_$date") {
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                }
+                        ExpensesList(
+                            expenses = state.expenses,
+                            onExpenseClick = { expense ->
+                                selectedExpense = expense
+                            },
+                            onExpenseDelete = { expense ->
+                                viewModel.deleteExpense(
+                                    expense = expense,
+                                    onSuccess = {
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("Расход успешно удален")
+                                        }
+                                    },
+                                    onError = { error ->
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar(error)
+                                        }
+                                    }
+                                )
                             }
-                        }
+                        )
                     }
                 }
             }
@@ -259,6 +263,36 @@ fun ExpensesScreen(
             onViewReceipt = { photoUrl ->
                 receiptUrl = photoUrl
                 selectedExpense = null
+            },
+            onEdit = { expense ->
+                selectedExpenseForEdit = expense
+            }
+        )
+    }
+
+    if (selectedExpenseForEdit != null) {
+        EditExpenseBottomSheet(
+            expense = selectedExpenseForEdit!!,
+            onDismiss = { selectedExpenseForEdit = null },
+            onSave = { amount, date, description, categoryId ->
+                viewModel.updateExpense(
+                    expense = selectedExpenseForEdit!!,
+                    amount = amount,
+                    date = date,
+                    description = description,
+                    categoryId = categoryId,
+                    onSuccess = {
+                        selectedExpenseForEdit = null
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Расход успешно обновлен")
+                        }
+                    },
+                    onError = { error ->
+                        scope.launch {
+                            snackbarHostState.showSnackbar(error)
+                        }
+                    }
+                )
             }
         )
     }
@@ -416,6 +450,149 @@ private fun formatDateHeader(dateStr: String): String {
             )
             date.format(formatter)
         }
+    }
+}
+
+@Composable
+fun ExpensesList(
+    expenses: List<ExpenseItem>,
+    onExpenseClick: (ExpenseItem) -> Unit,
+    onExpenseDelete: (ExpenseItem) -> Unit,
+    modifier: Modifier = Modifier
+) {
+
+    val groupedExpenses = expenses
+        .groupBy { it.date }
+        .toSortedMap(reverseOrder())
+
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        groupedExpenses.forEach { (date, expensesOnDate) ->
+            item(key = "header_$date") {
+                Text(
+                    text = formatDateHeader(date),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .padding(horizontal = 4.dp, vertical = 8.dp)
+                )
+            }
+
+            items(
+                items = expensesOnDate,
+                key = { it.expenseId }
+            ) { expense ->
+                SwipeToDeleteExpenseItem(
+                    expense = expense,
+                    onClick = onExpenseClick,
+                    onDelete = onExpenseDelete
+                )
+            }
+
+            item(key = "spacer_$date") {
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+        }
+    }
+}
+
+@Composable
+fun SwipeToDeleteExpenseItem(
+    expense: ExpenseItem,
+    onClick: (ExpenseItem) -> Unit,
+    onDelete: (ExpenseItem) -> Unit
+) {
+    var offsetX by remember { mutableStateOf(0f) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+
+    LaunchedEffect(showDeleteDialog) {
+        if (!showDeleteDialog) {
+            offsetX = 0f
+        }
+    }
+
+    val maxSwipePx = with(density) { 80.dp.toPx() }
+    val deleteThresholdPx = with(density) { 50.dp.toPx() }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures(
+                    onDragEnd = {
+                        if (abs(offsetX) > deleteThresholdPx) {
+                            showDeleteDialog = true
+                        }
+                        scope.launch {
+                            delay(100)
+                            offsetX = 0f
+                        }
+                    },
+                    onDragCancel = { offsetX = 0f },
+                    onHorizontalDrag = { _, dragAmount ->
+                        offsetX = (offsetX + dragAmount).coerceIn(-maxSwipePx, 0f)
+                    }
+                )
+            }
+    ) {
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clip(RoundedCornerShape(12.dp))
+                .background(DeleteColor),
+            contentAlignment = Alignment.CenterEnd
+        ) {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = "Удалить",
+                tint = MaterialTheme.colorScheme.onError,
+                modifier = Modifier.padding(end = 24.dp).size(32.dp)
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset { IntOffset(x = offsetX.toInt(), y = 0) }
+        ) {
+            ExpenseItemCard(
+                expense = expense,
+                onClick = onClick
+            )
+        }
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Удаление расхода") },
+            text = {
+                Text("Вы уверены, что хотите удалить расход на сумму ${expense.amount} ₽ от ${expense.date}?")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteDialog = false
+                        onDelete(expense)
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = DeleteColor
+                    )
+                ) {
+                    Text("Удалить")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Отмена")
+                }
+            }
+        )
     }
 }
 
@@ -1089,7 +1266,8 @@ fun PeriodBottomSheet(
 fun ExpenseDetailBottomSheet(
     expense: ExpenseItem,
     onDismiss: () -> Unit,
-    onViewReceipt: (String) -> Unit
+    onViewReceipt: (String) -> Unit,
+    onEdit: (ExpenseItem) -> Unit
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
@@ -1098,10 +1276,30 @@ fun ExpenseDetailBottomSheet(
                 .padding(24.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            Text(
-                text = "Подробности расхода",
-                style = MaterialTheme.typography.titleLarge
-            )
+            // Заголовок с иконкой редактирования
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Подробности расхода",
+                    style = MaterialTheme.typography.titleLarge
+                )
+
+                IconButton(
+                    onClick = {
+                        onDismiss()
+                        onEdit(expense)
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Редактировать",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -1121,15 +1319,159 @@ fun ExpenseDetailBottomSheet(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            if (!expense.receipt_photo.isNullOrBlank()) {
+            if (!expense.receiptPhoto.isNullOrBlank()) {
                 Button(
-                    onClick = { onViewReceipt(expense.receipt_photo!!) },
+                    onClick = { onViewReceipt(expense.receiptPhoto!!) },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Посмотреть чек")
                 }
             }
 
+            Spacer(modifier = Modifier.height(32.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditExpenseBottomSheet(
+    expense: ExpenseItem,
+    onDismiss: () -> Unit,
+    onSave: (amount: Double?, date: String?, description: String?, categoryId: Int?) -> Unit
+) {
+    var amountInput by remember { mutableStateOf(expense.amount.replace(" ₽", "")) }
+    var dateInput by remember { mutableStateOf(expense.date) }
+    var descriptionInput by remember { mutableStateOf(expense.description ?: "") }
+    var amountError by remember { mutableStateOf<String?>(null) }
+    var dateError by remember { mutableStateOf<String?>(null) }
+
+    val hasChanges = amountInput.toDoubleOrNull() != expense.amount.toDoubleOrNull() ||
+            dateInput != expense.date ||
+            descriptionInput != (expense.description ?: "")
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Редактирование расхода",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
+
+            // Поле для суммы
+            OutlinedTextField(
+                value = amountInput,
+                onValueChange = {
+                    amountInput = it.filter { c -> c.isDigit() || c == '.' }
+                    amountError = null
+                },
+                label = { Text("Сумма (₽)") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.fillMaxWidth(),
+                isError = amountError != null,
+                supportingText = {
+                    if (amountError != null) {
+                        Text(amountError!!, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = dateInput,
+                onValueChange = {
+                    dateInput = it
+                    dateError = null
+                },
+                label = { Text("Дата (YYYY-MM-DD)") },
+                placeholder = { Text("2024-01-01") },
+                modifier = Modifier.fillMaxWidth(),
+                isError = dateError != null,
+                supportingText = {
+                    if (dateError != null) {
+                        Text(dateError!!, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = descriptionInput,
+                onValueChange = { descriptionInput = it },
+                label = { Text("Описание (необязательно)") },
+                maxLines = 3,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Отмена")
+                }
+
+                Button(
+                    onClick = {
+                        var hasError = false
+
+                        val amount = if (amountInput.isNotBlank()) {
+                            val parsedAmount = amountInput.toDoubleOrNull()
+                            if (parsedAmount == null || parsedAmount <= 0) {
+                                amountError = "Введите корректную сумму"
+                                hasError = true
+                                null
+                            } else {
+                                parsedAmount
+                            }
+                        } else {
+                            null
+                        }
+
+                        val date = if (dateInput.isNotBlank()) {
+                            if (!dateInput.matches(Regex("\\d{4}-\\d{2}-\\d{2}"))) {
+                                dateError = "Неверный формат даты (ГГГГ-ММ-ДД)"
+                                hasError = true
+                                null
+                            } else {
+                                dateInput
+                            }
+                        } else {
+                            null
+                        }
+
+                        val description = descriptionInput.ifBlank { null }
+
+                        if (!hasError) {
+                            val finalAmount = if (amount != expense.amount.toDoubleOrNull()) amount else null
+                            val finalDate = if (date != expense.date) date else null
+                            val finalDescription = if (description != expense.description) description else null
+
+                            onSave(finalAmount, finalDate, finalDescription, null)
+                        }
+                    },
+                    modifier = Modifier.weight(1f),
+                    enabled = hasChanges
+                ) {
+                    Text("Сохранить")
+                }
+            }
             Spacer(modifier = Modifier.height(32.dp))
         }
     }

@@ -16,6 +16,7 @@ import com.example.autolog_20.R
 import com.example.autolog_20.ui.theme.data.api.AuthApi
 import com.example.autolog_20.ui.theme.data.locale.TokenManager
 import com.example.autolog_20.ui.theme.data.model.CarDetailsUiState
+import com.example.autolog_20.ui.theme.data.model.request.CarUpdateRequest
 import com.example.autolog_20.ui.theme.data.model.response.CarDetailResponse
 import com.example.autolog_20.ui.theme.data.model.response.TireResponse
 import com.google.android.gms.location.LocationServices
@@ -219,6 +220,51 @@ class CarDetailsViewModel(
             Log.e("CarDetailsVM", "SecurityException при отправке уведомления", e)
         } catch (e: Exception) {
             Log.e("CarDetailsVM", "Ошибка отправки уведомления", e)
+        }
+    }
+
+    fun updateCarDetails(
+        color: String,
+        numberPlate: String,
+        onSuccess: () -> Unit = {},
+        onError: (String) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            try {
+                val currentCar = _carDetail.value ?: run {
+                    onError("Данные автомобиля не загружены")
+                    return@launch
+                }
+
+                val request = CarUpdateRequest(
+                    color = color.trim(),
+                    numberPlate = numberPlate.trim().uppercase()
+                )
+
+                val response = authApi.updateCar(currentCar.carId, request)
+
+                if (response.isSuccessful) {
+                    val updatedCar = response.body()
+                    if (updatedCar != null) {
+                        _carDetail.value = updatedCar
+                    }
+                    onSuccess()
+                    Log.d("CarDetailsVM", "Автомобиль успешно обновлен")
+                } else {
+                    val errorMessage = when (response.code()) {
+                        400 -> "Некорректные данные"
+                        401 -> "Не авторизован"
+                        403 -> "Нет прав на редактирование"
+                        404 -> "Автомобиль не найден"
+                        else -> "Ошибка обновления: ${response.code()}"
+                    }
+                    onError(errorMessage)
+                    Log.e("CarDetailsVM", "Ошибка обновления: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                onError("Сетевая ошибка: ${e.localizedMessage}")
+                Log.e("CarDetailsVM", "Ошибка обновления автомобиля", e)
+            }
         }
     }
 }
