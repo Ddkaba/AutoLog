@@ -1,6 +1,11 @@
 package com.example.autolog_20.ui.theme.data.screen
 
+import android.content.Context
+import android.content.pm.PackageManager
+import android.graphics.Paint
 import android.net.Uri
+import android.webkit.WebView
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
@@ -31,11 +36,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -60,6 +67,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -89,6 +97,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -108,6 +118,11 @@ import com.example.autolog_20.ui.theme.PastelExpenseBackground
 import com.example.autolog_20.ui.theme.data.model.ExpensesUiState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.io.File
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.jar.Manifest
 import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -358,14 +373,14 @@ fun ExpensesScreen(
         val toMillis = dateRangePickerState.selectedEndDateMillis
 
         val fromDate = fromMillis?.let {
-            java.time.Instant.ofEpochMilli(it)
-                .atZone(java.time.ZoneId.systemDefault())
+            Instant.ofEpochMilli(it)
+                .atZone(ZoneId.systemDefault())
                 .toLocalDate()
         }
 
         val toDate = toMillis?.let {
-            java.time.Instant.ofEpochMilli(it)
-                .atZone(java.time.ZoneId.systemDefault())
+            Instant.ofEpochMilli(it)
+                .atZone(ZoneId.systemDefault())
                 .toLocalDate()
         }
 
@@ -445,7 +460,7 @@ private fun formatDateHeader(dateStr: String): String {
         date == LocalDate.now() -> "Сегодня"
         date == LocalDate.now().minusDays(1) -> "Вчера"
         else -> {
-            val formatter = java.time.format.DateTimeFormatter.ofPattern("dd MMMM yyyy",
+            val formatter = DateTimeFormatter.ofPattern("dd MMMM yyyy",
                 Locale("ru")
             )
             date.format(formatter)
@@ -741,18 +756,55 @@ fun AddExpenseDialog(
     onDismiss: () -> Unit,
     onAdd: (category: String, categoryId: Int, amount: Double, date: String, description: String?, photoUri: Uri?) -> Unit
 ) {
+    val context = LocalContext.current
     var selectedCategory by remember { mutableStateOf("Топливо") }
-    var selectedCategoryId by remember { mutableStateOf(3) }   // 3 = Топливо
+    var selectedCategoryId by remember { mutableStateOf(3) }
     var amount by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(LocalDate.now().toString()) }
     var description by remember { mutableStateOf("") }
     var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var showPhotoSourceSheet by remember { mutableStateOf(false) }
+    var tempPhotoFile by remember { mutableStateOf<File?>(null) }
 
     var categoryMenuExpanded by remember { mutableStateOf(false) }
 
-    val photoPicker = rememberLauncherForActivityResult(
+    val cameraPermission = android.Manifest.permission.CAMERA
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            tempPhotoFile?.let { file ->
+                selectedPhotoUri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    file
+                )
+            }
+        }
+        showPhotoSourceSheet = false
+    }
+
+    val cameraPermissionState = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+
+            openCamera(context, tempPhotoFile, cameraLauncher)
+        } else {
+            Toast.makeText(context, "Для фото чека нужно разрешение на камеру", Toast.LENGTH_SHORT).show()
+            showPhotoSourceSheet = false
+        }
+    }
+
+    // Ланчер для галереи
+    val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
-    ) { uri -> selectedPhotoUri = uri }
+    ) { uri ->
+        selectedPhotoUri = uri
+        showPhotoSourceSheet = false
+    }
+
 
     val categories = listOf(
         1 to "Техническое обслуживание",
@@ -773,7 +825,7 @@ fun AddExpenseDialog(
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
 
-                // === Выпадающий список категорий ===
+                // Выпадающий список категорий
                 Text(
                     text = "Категория",
                     style = MaterialTheme.typography.labelMedium
@@ -851,11 +903,17 @@ fun AddExpenseDialog(
 
                 Spacer(Modifier.height(16.dp))
 
-                // Прикрепление чека
+                // Кнопка прикрепления чека
                 Button(
-                    onClick = { photoPicker.launch("image/*") },
+                    onClick = { showPhotoSourceSheet = true },
                     modifier = Modifier.fillMaxWidth()
                 ) {
+                    Icon(
+                        imageVector = Icons.Default.CameraAlt,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(if (selectedPhotoUri == null) "Прикрепить чек" else "Чек прикреплён ✓")
                 }
 
@@ -894,6 +952,122 @@ fun AddExpenseDialog(
             }
         }
     )
+
+    // Bottom Sheet для выбора источника фото
+    if (showPhotoSourceSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showPhotoSourceSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Выберите источник",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(bottom = 24.dp)
+                )
+
+                // Кнопка галереи
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                        .clickable {
+                            galleryLauncher.launch("image/*")
+                        },
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PhotoLibrary,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            text = "Выбрать из галереи",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                }
+
+                // Кнопка камеры
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                        .clickable {
+                            if (ContextCompat.checkSelfPermission(
+                                    context,
+                                    cameraPermission
+                                ) == PackageManager.PERMISSION_GRANTED
+                            ) {
+                                val timeStamp = System.currentTimeMillis()
+                                val photoFile = File(context.cacheDir, "receipt_$timeStamp.jpg")
+                                tempPhotoFile = photoFile
+                                openCamera(context, photoFile, cameraLauncher)
+                            } else {
+                                cameraPermissionState.launch(cameraPermission)
+                            }
+                            showPhotoSourceSheet = false
+                        },
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CameraAlt,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            text = "Сделать фото",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                TextButton(onClick = { showPhotoSourceSheet = false }) {
+                    Text("Отмена")
+                }
+            }
+        }
+    }
+}
+
+private fun openCamera(
+    context: Context,
+    photoFile: File?,
+    cameraLauncher: androidx.activity.result.ActivityResultLauncher<Uri>
+) {
+    photoFile?.let { file ->
+        val photoUri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
+        cameraLauncher.launch(photoUri)
+    }
 }
 
 @Composable
@@ -907,7 +1081,6 @@ fun InteractiveExpensePieChart(
         return
     }
 
-    // Группируем расходы по категории
     val categorySums = expenses
         .groupBy { it.category?.name ?: "Прочие расходы" }
         .mapValues { entry ->
@@ -970,10 +1143,10 @@ fun InteractiveExpensePieChart(
         )
 
         drawContext.canvas.nativeCanvas.apply {
-            val paint = android.graphics.Paint().apply {
+            val paint = Paint().apply {
                 color = android.graphics.Color.WHITE
                 textSize = 48f
-                textAlign = android.graphics.Paint.Align.CENTER
+                textAlign = Paint.Align.CENTER
                 isFakeBoldText = true
             }
             drawText(
@@ -1035,7 +1208,6 @@ fun ExpenseCategoriesBottomSheet(
                             .padding(vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Цветной индикатор
                         Box(
                             modifier = Modifier
                                 .size(24.dp)
@@ -1276,7 +1448,6 @@ fun ExpenseDetailBottomSheet(
                 .padding(24.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Заголовок с иконкой редактирования
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1367,7 +1538,6 @@ fun EditExpenseBottomSheet(
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
-            // Поле для суммы
             OutlinedTextField(
                 value = amountInput,
                 onValueChange = {
@@ -1492,7 +1662,7 @@ fun ReceiptWebViewDialog(
         text = {
             AndroidView(
                 factory = { context ->
-                    android.webkit.WebView(context).apply {
+                    WebView(context).apply {
                         settings.javaScriptEnabled = true
                         settings.loadWithOverviewMode = true
                         settings.useWideViewPort = true
