@@ -198,11 +198,12 @@ fun MainScreen(
                         }
                     }
                 }
-
                 MainUiState.Unauthorized -> {
+                    val sessionExpiredText = stringResource(R.string.session_expired)
+
                     LaunchedEffect(Unit) {
                         scope.launch {
-                            snackbarHostState.showSnackbar(context.getString(R.string.session_expired))
+                            snackbarHostState.showSnackbar(sessionExpiredText)
                         }
                         delay(1500)
                         navController.navigate("login") {
