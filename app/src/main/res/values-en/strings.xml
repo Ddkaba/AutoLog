@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AutoLog</string>
+    <string name="data_from_STS">Data from STS</string>
+    <string name="back">Back</string>
+    <string name="check_data">Check and edit the recognized data</string>
+    <string name="info_about_car">Car Information</string>
+    <string name="vin_17">VIN must contain 17 characters</string>
+    <string name="brand">Brand</string>
+    <string name="model">Model</string>
+    <string name="manufacture_year">Year of manufacture</string>
+    <string name="uncorrected_year">Enter a valid year (1900-2028)</string>
+    <string name="year_4">Year must contain 4 digits</string>
+    <string name="color">Color</string>
+    <string name="number">License plate</string>
+    <string name="uncorrected_number">Invalid license plate format (example: A123BC777)</string>
+    <string name="my_cars">My Cars</string>
+    <string name="exit">Exit</string>
+    <string name="add_car">Add Car</string>
+    <string name="add_car_2">Add a car</string>
+    <string name="settings">Settings</string>
+    <string name="repeat">Retry</string>
+    <string name="session_expired">Session expired. Please log in again.</string>
+    <string name="delete_car">Car successfully deleted</string>
+    <string name="delete">Delete</string>
+    <string name="removing_vehicle">Remove vehicle</string>
+    <string name="delete_car_confirmation">Are you sure you want to delete the car %1$s %2$s (%3$s)?</string>
+    <string name="cancel">Cancel</string>
+    <string name="no_cars">You have no cars yet</string>
+    <string name="first_car">Add your first car</string>
+    <string name="input_vin">Enter VIN</string>
+    <string name="digit_code_17">Via 17-digit code</string>
+    <string name="scan_sts">Scan STS</string>
+    <string name="camera_phone">Via phone camera</string>
+    <string name="fill_manually">Fill manually</string>
+    <string name="transfer">Brand, model, year, license plate, etc.</string>
+    <string name="language">Language</string>
+    <string name="russian">Russian</string>
+    <string name="english">English</string>
+    <string name="dark">Dark</string>
+    <string name="light">Light</string>
+    <string name="gps_work">GPS mileage tracking</string>
+    <string name="on">On</string>
+    <string name="off">Off</string>
+    <string name="info">Info</string>
+    <string name="theme">Theme</string>
+</resources>

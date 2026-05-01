@@ -75,9 +75,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import android.Manifest
-import android.R.attr.subtitle
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.filled.AcUnit
 import androidx.compose.material.icons.filled.Autorenew
 import androidx.compose.material.icons.filled.CheckCircle
@@ -113,9 +111,18 @@ fun CarDetailsScreen(
     val carDetail by viewModel.carDetail.collectAsStateWithLifecycle()
     val showTireDialog by viewModel.showTireDialog.collectAsStateWithLifecycle()
     val tireRecommendation by viewModel.tireRecommendation.collectAsStateWithLifecycle()
+    val monthlyExpenses by viewModel.monthlyExpenses.collectAsStateWithLifecycle()
+    val isLoadingExpenses by viewModel.isLoadingExpenses.collectAsStateWithLifecycle()
+
     var expandedTires by remember { mutableStateOf(false) }
+    var expandedExpenses by remember { mutableStateOf(false) }
     var showEditSheet by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    var expandedTo by remember { mutableStateOf(false) }
+    var expandedMileage by remember { mutableStateOf(false) }
+    var showTireSelectionSheet by remember { mutableStateOf(false) }
+    var showFirstTireSelection by remember { mutableStateOf(false) }
+
     val scope = rememberCoroutineScope()
 
     val locationPermissionsState = rememberMultiplePermissionsState(
@@ -125,6 +132,12 @@ fun CarDetailsScreen(
         )
     )
 
+    LaunchedEffect(carDetail) {
+        if (carDetail != null && monthlyExpenses == null && !isLoadingExpenses) {
+            viewModel.loadMonthlyExpenses(carDetail!!.carId)
+        }
+    }
+
     LaunchedEffect(Unit) {
         if (!locationPermissionsState.allPermissionsGranted) {
             locationPermissionsState.launchMultiplePermissionRequest()
@@ -133,17 +146,24 @@ fun CarDetailsScreen(
 
     LaunchedEffect(locationPermissionsState.allPermissionsGranted) {
         if (locationPermissionsState.allPermissionsGranted &&
-            !TokenManager.shouldShowTireDialog()
+            !TokenManager.shouldShowTireDialog(numberPlate)
         ) {
-            Timber.tag("CarDetailsScreen").d("Разрешения получены → запускаем проверку резины")
             viewModel.checkTireRecommendation()
         }
     }
 
-    var expandedTo by remember { mutableStateOf(false) }
-    var expandedExpenses by remember { mutableStateOf(false) }
-    var expandedMileage by remember { mutableStateOf(false) }
-    var showTireSelectionSheet by remember { mutableStateOf(false) }
+    LaunchedEffect(expandedExpenses) {
+        if (expandedExpenses && carDetail != null) {
+            viewModel.loadMonthlyExpenses(carDetail!!.carId)
+        }
+    }
+
+    LaunchedEffect(showTireDialog) {
+        if (showTireDialog) {
+            showFirstTireSelection = true
+        }
+    }
+
 
     Scaffold(
         topBar = {
@@ -171,11 +191,6 @@ fun CarDetailsScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
-            if (showTireDialog) {
-                TireTypeDialog(onConfirm = viewModel::setTireType)
-            }
-
-            // Шапка автомобиля
             carDetail?.let { CarHeader(car = it) } ?: run {
                 Box(modifier = Modifier.fillMaxWidth().height(140.dp), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
@@ -203,7 +218,7 @@ fun CarDetailsScreen(
             FeatureTile(
                 title = "Покрышки",
                 subtitle = when {
-                    TokenManager.shouldShowTireDialog() -> "Укажите тип резины"
+                    TokenManager.shouldShowTireDialog(numberPlate) -> "Укажите тип резины"
                     tireRecommendation == null -> "Проверка..."
                     tireRecommendation?.shouldChangeTo != tireRecommendation?.currentTires ->
                         "Рекомендуется смена! ${tireRecommendation?.recommendation}"
@@ -217,9 +232,9 @@ fun CarDetailsScreen(
                     showTireSelectionSheet = true
                     expandedTires = false
                 },
-                isWarning = TokenManager.shouldShowTireDialog() || (tireRecommendation?.shouldChangeTo != tireRecommendation?.currentTires)
+                isWarning = TokenManager.shouldShowTireDialog(numberPlate) || (tireRecommendation?.shouldChangeTo != tireRecommendation?.currentTires)
             ) {
-                val currentTires = TokenManager.getCurrentTires()
+                val currentTires = TokenManager.getCurrentTires(numberPlate)
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -242,15 +257,34 @@ fun CarDetailsScreen(
                 }
             }
 
+            if (showFirstTireSelection) {
+                ModalBottomSheet(
+                    onDismissRequest = {
+                    },
+                    sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+                ) {
+                    TireTypeSelectionSheet(
+                        currentType = null,
+                        onTypeSelected = { selectedType ->
+                            viewModel.setTireType(selectedType)
+                            showFirstTireSelection = false
+                        },
+                        onDismiss = {
+                            showFirstTireSelection = false
+                        }
+                    )
+                }
+            }
+
             if (showTireSelectionSheet) {
                 ModalBottomSheet(
                     onDismissRequest = { showTireSelectionSheet = false },
                     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
                 ) {
                     TireTypeSelectionSheet(
-                        currentType = TokenManager.getCurrentTires(),
+                        currentType = TokenManager.getCurrentTires(numberPlate),
                         onTypeSelected = { selectedType ->
-                            TokenManager.setCurrentTires(selectedType)
+                            TokenManager.setCurrentTires(numberPlate, selectedType)
                             showTireSelectionSheet = false
                             viewModel.checkTireRecommendation()
                         },
@@ -261,7 +295,11 @@ fun CarDetailsScreen(
 
             FeatureTile(
                 title = "Расходы",
-                subtitle = "За последний месяц",
+                subtitle = when {
+                    isLoadingExpenses -> "Загрузка..."
+                    monthlyExpenses != null -> "За последний месяц"
+                    else -> "Нет данных"
+                },
                 icon = rememberVectorPainter(Icons.Default.AttachMoney),
                 color = TileExpenses,
                 expanded = expandedExpenses,
@@ -270,16 +308,43 @@ fun CarDetailsScreen(
                     navController.navigate("expenses/${numberPlate}")
                 }
             ) {
-                Text(
-                    text = "Итого: 14 200 ₽",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "ТО • Топливо • Мойка",
-                    style = MaterialTheme.typography.bodySmall
-                )
+                when {
+                    isLoadingExpenses -> {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                        }
+                    }
+                    monthlyExpenses != null -> {
+                        Text(
+                            text = "Итого: ${String.format("%.0f", monthlyExpenses!!.totalSpent)} ₽",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        if (monthlyExpenses!!.categories.isNotEmpty()) {
+                            Text(
+                                text = monthlyExpenses!!.categories.joinToString(" • "),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        } else {
+                            Text(
+                                text = "Нет расходов за последний месяц",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    else -> {
+                        Text(
+                            text = "Нет данных о расходах",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
 
             FeatureTile(
@@ -465,11 +530,10 @@ fun TireTypeSelectionSheet(
                 }
             }
         }
-
         Spacer(modifier = Modifier.height(32.dp))
 
         TextButton(onClick = onDismiss) {
-            Text("Отмена")
+            Text("Позже")
         }
     }
 }
@@ -574,41 +638,6 @@ fun FeatureTile(
             }
         }
     }
-}
-
-@Composable
-fun TireTypeDialog(
-    onConfirm: (String) -> Unit
-) {
-    var selected by remember { mutableStateOf("summer") }
-
-    AlertDialog(
-        onDismissRequest = { /* нельзя закрыть без выбора */ },
-        title = { Text("Укажите тип установленной резины") },
-        text = {
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(
-                        selected = selected == "summer",
-                        onClick = { selected = "summer" }
-                    )
-                    Text("Летняя")
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(
-                        selected = selected == "winter",
-                        onClick = { selected = "winter" }
-                    )
-                    Text("Зимняя")
-                }
-            }
-        },
-        confirmButton = {
-            Button(onClick = { onConfirm(selected) }) {
-                Text("Сохранить")
-            }
-        }
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -738,8 +767,3 @@ fun EditCarBottomSheet(
         }
     }
 }
-
-
-
-
-

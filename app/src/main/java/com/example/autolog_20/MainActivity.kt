@@ -2,6 +2,7 @@ package com.example.autolog_20
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -19,7 +20,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.autolog_20.ui.theme.AutoLogTheme
 import com.example.autolog_20.ui.theme.BackgroundDark
+import com.example.autolog_20.ui.theme.data.locale.LocaleManager
 import com.example.autolog_20.ui.theme.data.locale.TokenManager
+import com.example.autolog_20.ui.theme.data.screen.AddCarByScanDataScreen
 import com.example.autolog_20.ui.theme.data.screen.AddCarByScanStsScreen
 import com.example.autolog_20.ui.theme.data.screen.AddCarByVinScreen
 import com.example.autolog_20.ui.theme.data.screen.AddCarManualScreen
@@ -27,15 +30,24 @@ import com.example.autolog_20.ui.theme.data.screen.CarDetailsScreen
 import com.example.autolog_20.ui.theme.data.screen.ExpensesScreen
 import com.example.autolog_20.ui.theme.data.screen.LoginScreen
 import com.example.autolog_20.ui.theme.data.screen.MainScreen
+import com.example.autolog_20.ui.theme.data.screen.MaintenanceScreen
 import com.example.autolog_20.ui.theme.data.screen.RegisterScreen
 import com.example.autolog_20.ui.theme.data.screen.SettingsScreen
 import com.example.autolog_20.ui.theme.data.screen.StartupScreen
+import com.example.autolog_20.ui.theme.data.locale.SettingsManager
 
 class MainActivity : ComponentActivity() {
+
+    override fun attachBaseContext(newBase: Context) {
+        SettingsManager.init(newBase)
+        val language = SettingsManager.getLanguage()
+        super.attachBaseContext(LocaleManager.setLocale(newBase, language))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AutoLogApplication.currentActivity = this
         createNotificationChannel()
-
         TokenManager.init(this)
 
         setContent {
@@ -55,9 +67,68 @@ class MainActivity : ComponentActivity() {
                         composable("register") { RegisterScreen(navController) }
                         composable("main") { MainScreen(navController) }
 
+
                         composable("add_car_vin") { AddCarByVinScreen(navController) }
-                        composable("add_car_scan_sts") { AddCarByScanStsScreen(navController) }
                         composable("add_car_manual") { AddCarManualScreen(navController) }
+                        composable("add_car_scan_sts") { AddCarByScanStsScreen(navController) }
+
+                        composable(
+                            route = "add_car_scan_data/{vin}/{brand}/{model}/{year}/{color}/{numberPlate}",
+                            arguments = listOf(
+                                navArgument("vin") { type = NavType.StringType },
+                                navArgument("brand") { type = NavType.StringType },
+                                navArgument("model") { type = NavType.StringType },
+                                navArgument("year") { type = NavType.IntType },
+                                navArgument("color") { type = NavType.StringType },
+                                navArgument("numberPlate") { type = NavType.StringType }
+                            )
+                        ) { backStackEntry ->
+                            val vin = backStackEntry.arguments?.getString("vin") ?: ""
+                            val brand = backStackEntry.arguments?.getString("brand") ?: ""
+                            val model = backStackEntry.arguments?.getString("model") ?: ""
+                            val year = backStackEntry.arguments?.getInt("year") ?: 0
+                            val color = backStackEntry.arguments?.getString("color") ?: ""
+                            val numberPlate = backStackEntry.arguments?.getString("numberPlate") ?: ""
+
+                            AddCarByScanDataScreen(
+                                navController = navController,
+                                vin = vin,
+                                brand = brand,
+                                model = model,
+                                year = year,
+                                color = color,
+                                numberPlate = numberPlate
+                            )
+                        }
+
+                        composable(
+                            route = "add_car_manual_with_data_confirm/{vin}/{brand}/{model}/{year}/{color}/{numberPlate}",
+                            arguments = listOf(
+                                navArgument("vin") { type = NavType.StringType },
+                                navArgument("brand") { type = NavType.StringType },
+                                navArgument("model") { type = NavType.StringType },
+                                navArgument("year") { type = NavType.IntType },
+                                navArgument("color") { type = NavType.StringType },
+                                navArgument("numberPlate") { type = NavType.StringType }
+                            )
+                        ) { backStackEntry ->
+                            val vin = backStackEntry.arguments?.getString("vin") ?: ""
+                            val brand = backStackEntry.arguments?.getString("brand") ?: ""
+                            val model = backStackEntry.arguments?.getString("model") ?: ""
+                            val year = backStackEntry.arguments?.getInt("year") ?: 0
+                            val color = backStackEntry.arguments?.getString("color") ?: ""
+                            val numberPlate = backStackEntry.arguments?.getString("numberPlate") ?: ""
+
+                            AddCarByScanDataScreen(
+                                navController = navController,
+                                vin = vin,
+                                brand = brand,
+                                model = model,
+                                year = year,
+                                color = color,
+                                numberPlate = numberPlate
+                            )
+                        }
 
                         composable(route = "car_details/{numberPlate}",
                             arguments = listOf(navArgument("numberPlate") { type = NavType.StringType })
@@ -72,7 +143,10 @@ class MainActivity : ComponentActivity() {
                             }
                         }
 
-                        composable("maintenance/{numberPlate}") { /* MaintenanceScreen */ }
+                        composable("maintenance/{numberPlate}") { backStackEntry ->
+                            val numberPlate = backStackEntry.arguments?.getString("numberPlate") ?: ""
+                            MaintenanceScreen(navController, numberPlate)
+                        }
                         composable("tires/{numberPlate}") { /* TiresScreen */ }
 
                         composable("expenses/{numberPlate}") { backStackEntry ->
@@ -92,6 +166,13 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (AutoLogApplication.currentActivity == this) {
+            AutoLogApplication.currentActivity = null
         }
     }
 

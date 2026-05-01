@@ -17,7 +17,9 @@ import com.example.autolog_20.ui.theme.data.model.response.RecommendationRespons
 import com.example.autolog_20.ui.theme.data.model.request.RegisterRequest
 import com.example.autolog_20.ui.theme.data.model.response.AddCarToUserResponse
 import com.example.autolog_20.ui.theme.data.model.response.CarAddResponse
+import com.example.autolog_20.ui.theme.data.model.response.MileageResponse
 import com.example.autolog_20.ui.theme.data.model.response.RegisterResponse
+import com.example.autolog_20.ui.theme.data.model.response.ServiceHistoryResponse
 import com.example.autolog_20.ui.theme.data.model.response.TireResponse
 import com.example.autolog_20.ui.theme.data.model.response.VinInfoResponse
 import okhttp3.MultipartBody
@@ -35,6 +37,8 @@ import retrofit2.http.Query
 
 interface AuthApi {
 
+    @GET("api/")
+    suspend fun getApiRoot(): Response<Unit>
 
     @GET("api/my-cars/")
     suspend fun getMyCars(): Response<List<CarResponse>>
@@ -74,6 +78,17 @@ interface AuthApi {
     suspend fun checkVinExists(
         @Path("vin") vin: String
     ): Response<VinCheckResponse>
+
+    @GET("api/cars/{carId}/service/")
+    suspend fun getServiceHistory(
+        @Path("carId") carId: Int
+    ): Response<ServiceHistoryResponse>
+
+    @GET("api/cars/{carId}/mileage/")
+    suspend fun getMileage(
+        @Path("carId") carId: Int,
+        @Query("period") period: String = "all"
+    ): Response<MileageResponse>
 
     @POST("api/login/")
     suspend fun login(

@@ -25,7 +25,6 @@ import com.example.autolog_20.ui.theme.data.api.AuthApi
 import com.example.autolog_20.ui.theme.data.api.RetrofitClient
 import com.example.autolog_20.ui.theme.data.locale.TokenManager
 import com.example.autolog_20.ui.theme.data.network.AndroidConnectivityObserver
-import com.example.autolog_20.ui.theme.data.network.ConnectivityObserver
 import com.example.autolog_20.ui.theme.data.network.isServerReachable
 
 @Composable

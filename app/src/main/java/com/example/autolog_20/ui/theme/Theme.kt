@@ -26,8 +26,6 @@ fun AutoLogTheme(
         onSurface = TextPrimary,
         error = Error,
         onError = Color.White,
-        // можно добавить другие цвета при необходимости
-        // inversePrimary, tertiary, etc.
     )
 
     val typography = Typography(

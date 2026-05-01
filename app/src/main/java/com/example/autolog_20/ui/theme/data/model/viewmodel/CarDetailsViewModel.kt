@@ -16,6 +16,7 @@ import com.example.autolog_20.R
 import com.example.autolog_20.ui.theme.data.api.AuthApi
 import com.example.autolog_20.ui.theme.data.locale.TokenManager
 import com.example.autolog_20.ui.theme.data.model.CarDetailsUiState
+import com.example.autolog_20.ui.theme.data.model.ExpensesData
 import com.example.autolog_20.ui.theme.data.model.request.CarUpdateRequest
 import com.example.autolog_20.ui.theme.data.model.response.CarDetailResponse
 import com.example.autolog_20.ui.theme.data.model.response.TireResponse
@@ -25,6 +26,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import timber.log.Timber
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -40,19 +42,23 @@ class CarDetailsViewModel(
     private val _uiState = MutableStateFlow<CarDetailsUiState>(CarDetailsUiState.Loading)
     val uiState: StateFlow<CarDetailsUiState> = _uiState.asStateFlow()
 
-    private val _showTireDialog = MutableStateFlow(TokenManager.shouldShowTireDialog())
+    private val _showTireDialog = MutableStateFlow(TokenManager.shouldShowTireDialog(numberPlate))
     val showTireDialog: StateFlow<Boolean> = _showTireDialog.asStateFlow()
 
     private val _tireRecommendation = MutableStateFlow<TireResponse?>(null)
     val tireRecommendation: StateFlow<TireResponse?> = _tireRecommendation.asStateFlow()
 
+    private val _monthlyExpenses = MutableStateFlow<ExpensesData?>(null)
+    val monthlyExpenses: StateFlow<ExpensesData?> = _monthlyExpenses.asStateFlow()
+
+    private val _isLoadingExpenses = MutableStateFlow(false)
+    val isLoadingExpenses: StateFlow<Boolean> = _isLoadingExpenses.asStateFlow()
+
+    private var isCheckingRecommendation = false
+
     init {
         loadCarDetails()
-        if (!TokenManager.shouldShowTireDialog()) {
-            checkTireRecommendation()
-        } else {
-            Log.d("CarDetailsVM", "Тип резины не выбран → показываем диалог")
-        }
+        _showTireDialog.value = TokenManager.shouldShowTireDialog(numberPlate)
     }
 
     private fun loadCarDetails() {
@@ -72,7 +78,7 @@ class CarDetailsViewModel(
                 }
             } catch (e: Exception) {
                 _uiState.value = CarDetailsUiState.Error("Сетевая ошибка: ${e.localizedMessage}")
-                Log.e("CarDetailsVM", "Ошибка загрузки деталей авто", e)
+                Timber.tag("CarDetailsVM").e(e, "Ошибка загрузки деталей авто")
             }
         }
     }
@@ -100,44 +106,76 @@ class CarDetailsViewModel(
         }
     }
 
-    // Метод generateAndAddRecommendations полностью удален
+    fun loadMonthlyExpenses(carId: Int) {
+        viewModelScope.launch {
+            _isLoadingExpenses.value = true
+            try {
+                val response = authApi.getExpenses(
+                    carId = carId,
+                    period = "month",
+                    from = null,
+                    to = null,
+                    category = emptyList()
+                )
+
+                if (response.isSuccessful) {
+                    val data = response.body()
+                    if (data != null) {
+                        _monthlyExpenses.value = ExpensesData(
+                            totalSpent = data.total_spent,
+                            categories = data.expenses.groupBy { it.category?.name ?: "Прочие" }
+                                .mapValues {
+                                    it.value.sumOf { e ->
+                                        e.amount.toDoubleOrNull() ?: 0.0
+                                    }
+                                }
+                                .keys.take(3)
+                        )
+                    }
+                } else {
+                    Log.e("CarDetailsVM", "Ошибка загрузки расходов: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                Log.e("CarDetailsVM", "Ошибка загрузки расходов", e)
+            } finally {
+                _isLoadingExpenses.value = false
+            }
+        }
+    }
 
     fun setTireType(tireType: String) {
-        TokenManager.setCurrentTires(tireType)
+        TokenManager.setCurrentTires(numberPlate, tireType)
         _showTireDialog.value = false
-        Log.d("CarDetailsVM", "Выбран тип резины: $tireType → запускаем проверку")
+        Timber.tag("CarDetailsVM").d("Выбран тип резины: $tireType -> запускаем проверку")
         checkTireRecommendation()
     }
 
-    fun clearTireRecommendation() {
-        _tireRecommendation.value = null
-        Log.d("CarDetailsVM", "Всесезонная резина выбрана → рекомендация очищена")
-    }
-
     fun checkTireRecommendation() {
+        if (isCheckingRecommendation) {
+            Timber.tag("CarDetailsVM").d("Проверка резины уже выполняется, пропускаем")
+            return
+        }
         viewModelScope.launch {
-            val currentTires = TokenManager.getCurrentTires() ?: run {
-                Log.w("CarDetailsVM", "Тип резины не установлен → пропускаем запрос")
+            val currentTires = TokenManager.getCurrentTires(numberPlate) ?: run {
+                Timber.tag("CarDetailsVM").w("Тип резины не установлен -> пропускаем запрос")
                 return@launch
             }
 
             val location = try {
                 getCurrentLocation()
             } catch (e: Exception) {
-                Log.e("CarDetailsVM", "Ошибка получения геолокации", e)
+                Timber.tag("CarDetailsVM").e(e, "Ошибка получения геолокации")
                 null
             }
 
             if (location == null) {
-                Log.w("CarDetailsVM", "Геолокация недоступна")
+                Timber.tag("CarDetailsVM").w("Геолокация недоступна")
                 return@launch
             }
 
             try {
-                Log.d(
-                    "CarDetailsVM",
-                    "Запрос по резине: lat=${location.latitude}, lon=${location.longitude}, tires=$currentTires"
-                )
+                Timber.tag("CarDetailsVM")
+                    .d("Запрос по резине: lat=${location.latitude}, lon=${location.longitude}, tires=$currentTires")
 
                 val response = authApi.getTireRecommendation(
                     lat = location.latitude,
@@ -149,17 +187,19 @@ class CarDetailsViewModel(
                     val tire = response.body()
                     _tireRecommendation.value = tire
                     if (tire != null) {
-                        Log.i("CarDetailsVM", "Рекомендация по резине: ${tire.recommendation}")
+                        Timber.tag("CarDetailsVM")
+                            .i("Рекомендация по резине: ${tire.recommendation}")
                         if (tire.shouldChangeTo != currentTires) {
                             sendTireNotification(tire)
                         }
                     }
                 } else {
                     val errorBody = response.errorBody()?.string()
-                    Log.w("CarDetailsVM", "Ошибка сервера по резине: ${response.code()} - $errorBody")
+                    Timber.tag("CarDetailsVM")
+                        .w("Ошибка сервера по резине: ${response.code()} - $errorBody")
                 }
             } catch (e: Exception) {
-                Log.e("CarDetailsVM", "Ошибка запроса рекомендации по резине", e)
+                Timber.tag("CarDetailsVM").e(e, "Ошибка запроса рекомендации по резине")
             }
         }
     }
@@ -171,24 +211,22 @@ class CarDetailsViewModel(
         fusedLocationClient.lastLocation
             .addOnSuccessListener { location: Location? ->
                 if (location != null) {
-                    Log.d(
-                        "CarDetailsVM",
-                        "Получена локация: ${location.latitude}, ${location.longitude}"
-                    )
+                    Timber.tag("CarDetailsVM")
+                        .d("Получена локация: ${location.latitude}, ${location.longitude}")
                     cont.resume(location)
                 } else {
-                    Log.w("CarDetailsVM", "Последняя локация null")
+                    Timber.tag("CarDetailsVM").w("Последняя локация null")
                     cont.resume(null)
                 }
             }
             .addOnFailureListener { e ->
-                Log.e("CarDetailsVM", "Не удалось получить локацию", e)
+                Timber.tag("CarDetailsVM").e(e, "Не удалось получить локацию")
                 cont.resumeWithException(e)
             }
     }
 
     private fun sendTireNotification(tire: TireResponse) {
-        Log.d("CarDetailsVM", "Попытка отправить уведомление о смене резины")
+        Timber.tag("CarDetailsVM").d("Попытка отправить уведомление о смене резины")
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ActivityCompat.checkSelfPermission(
@@ -196,7 +234,8 @@ class CarDetailsViewModel(
                 Manifest.permission.POST_NOTIFICATIONS
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            Log.w("CarDetailsVM", "Разрешение POST_NOTIFICATIONS не предоставлено → уведомление не отправлено")
+            Timber.tag("CarDetailsVM")
+                .w("Разрешение POST_NOTIFICATIONS не предоставлено → уведомление не отправлено")
             return
         }
 
@@ -215,11 +254,11 @@ class CarDetailsViewModel(
 
         try {
             notificationManager.notify(notificationId, builder.build())
-            Log.i("CarDetailsVM", "Уведомление успешно отправлено (id: $notificationId)")
+            Timber.tag("CarDetailsVM").i("Уведомление успешно отправлено (id: $notificationId)")
         } catch (e: SecurityException) {
-            Log.e("CarDetailsVM", "SecurityException при отправке уведомления", e)
+            Timber.tag("CarDetailsVM").e(e, "SecurityException при отправке уведомления")
         } catch (e: Exception) {
-            Log.e("CarDetailsVM", "Ошибка отправки уведомления", e)
+            Timber.tag("CarDetailsVM").e(e, "Ошибка отправки уведомления")
         }
     }
 
@@ -249,7 +288,7 @@ class CarDetailsViewModel(
                         _carDetail.value = updatedCar
                     }
                     onSuccess()
-                    Log.d("CarDetailsVM", "Автомобиль успешно обновлен")
+                    Timber.tag("CarDetailsVM").d("Автомобиль успешно обновлен")
                 } else {
                     val errorMessage = when (response.code()) {
                         400 -> "Некорректные данные"
@@ -259,11 +298,11 @@ class CarDetailsViewModel(
                         else -> "Ошибка обновления: ${response.code()}"
                     }
                     onError(errorMessage)
-                    Log.e("CarDetailsVM", "Ошибка обновления: ${response.code()}")
+                    Timber.tag("CarDetailsVM").e("Ошибка обновления: ${response.code()}")
                 }
             } catch (e: Exception) {
                 onError("Сетевая ошибка: ${e.localizedMessage}")
-                Log.e("CarDetailsVM", "Ошибка обновления автомобиля", e)
+                Timber.tag("CarDetailsVM").e(e, "Ошибка обновления автомобиля")
             }
         }
     }

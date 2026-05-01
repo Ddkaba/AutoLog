@@ -1,5 +1,6 @@
 package com.example.autolog_20.ui.theme.data.screen
 
+import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -75,7 +76,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
+import com.example.autolog_20.R
 import com.example.autolog_20.ui.theme.DeleteColor
 import com.example.autolog_20.ui.theme.data.model.MainUiState
 import kotlinx.coroutines.CoroutineScope
@@ -94,6 +98,8 @@ fun MainScreen(
         }
     )
 ) {
+
+    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -107,12 +113,12 @@ fun MainScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Мои автомобили") },
+                title = { Text(stringResource(R.string.my_cars)) },
                 navigationIcon = {
                     IconButton(onClick = { viewModel.logout(navController) }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                            contentDescription = "Выход",
+                            contentDescription = stringResource(R.string.exit),
                             tint = MaterialTheme.colorScheme.onPrimary
                         )
                     }
@@ -121,7 +127,7 @@ fun MainScreen(
                     IconButton(onClick = { showAddOptions = true }) {
                         Icon(
                             imageVector = Icons.Default.Add,
-                            contentDescription = "Добавить авто"
+                            contentDescription = stringResource(R.string.add_car)
                         )
                     }
                 },
@@ -156,6 +162,7 @@ fun MainScreen(
                         viewModel = viewModel,
                         snackbarHostState = snackbarHostState,
                         scope = scope,
+                        context = context,
                         modifier = Modifier.fillMaxSize()
                     )
                     FloatingActionButton(
@@ -168,7 +175,7 @@ fun MainScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            contentDescription = "Настройки"
+                            contentDescription = stringResource(R.string.settings)
                         )
                     }
                 }
@@ -186,7 +193,7 @@ fun MainScreen(
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(onClick = { viewModel.loadCars() }) {
-                                Text("Повторить")
+                                Text(stringResource(R.string.repeat))
                             }
                         }
                     }
@@ -195,7 +202,7 @@ fun MainScreen(
                 MainUiState.Unauthorized -> {
                     LaunchedEffect(Unit) {
                         scope.launch {
-                            snackbarHostState.showSnackbar("Сессия истекла. Войдите заново.")
+                            snackbarHostState.showSnackbar(context.getString(R.string.session_expired))
                         }
                         delay(1500)
                         navController.navigate("login") {
@@ -243,6 +250,7 @@ private fun CarsList(
     viewModel: MainViewModel,
     snackbarHostState: SnackbarHostState,
     scope: CoroutineScope,
+    context: Context,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -260,7 +268,7 @@ private fun CarsList(
                         numberPlate = numberPlate,
                         onSuccess = {
                             scope.launch {
-                                snackbarHostState.showSnackbar("Автомобиль успешно удален")
+                                snackbarHostState.showSnackbar(context.getString(R.string.delete_car))
                             }
                         },
                         onError = { error ->
@@ -280,7 +288,7 @@ private fun SwipeToDeleteCard(
     car: CarResponse,
     navController: NavController,
     viewModel: MainViewModel,
-    onDelete: (String) -> Unit  // Передаем номер автомобиля
+    onDelete: (String) -> Unit
 ) {
     var offsetX by remember { mutableStateOf(0f) }
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -335,7 +343,7 @@ private fun SwipeToDeleteCard(
             } else {
                 Icon(
                     imageVector = Icons.Default.Delete,
-                    contentDescription = "Удалить",
+                    contentDescription = stringResource(R.string.delete),
                     tint = MaterialTheme.colorScheme.onError,
                     modifier = Modifier.padding(end = 24.dp).size(32.dp)
                 )
@@ -358,13 +366,13 @@ private fun SwipeToDeleteCard(
     if (showDeleteDialog && !isDeleting) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Удаление автомобиля") },
-            text = { Text("Вы уверены, что хотите удалить автомобиль ${car.brand} ${car.model} (${car.numberPlate})?") },
+            title = { Text(stringResource(R.string.removing_vehicle)) },
+            text = { Text(stringResource(R.string.delete_car_confirmation, car.brand, car.model, car.numberPlate)) },
             confirmButton = {
                 Button(
                     onClick = {
                         showDeleteDialog = false
-                        onDelete(car.numberPlate)  // Передаем номер
+                        onDelete(car.numberPlate)
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = DeleteColor
@@ -374,7 +382,7 @@ private fun SwipeToDeleteCard(
                     if (isDeleting) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp))
                     } else {
-                        Text("Удалить")
+                        Text(stringResource(R.string.delete))
                     }
                 }
             },
@@ -383,7 +391,7 @@ private fun SwipeToDeleteCard(
                     onClick = { showDeleteDialog = false },
                     enabled = !isDeleting
                 ) {
-                    Text("Отмена")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         )
@@ -453,19 +461,19 @@ private fun EmptyCarsContent(
         )
         Spacer(modifier = Modifier.height(24.dp))
         Text(
-            text = "У вас пока нет автомобилей",
+            text = stringResource(R.string.no_cars),
             style = MaterialTheme.typography.titleMedium,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Добавьте первый автомобиль",
+            text = stringResource(R.string.first_car),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(32.dp))
         Button(onClick = onAddClick) {
-            Text("Добавить автомобиль")
+            Text(stringResource(R.string.add_car_2))
         }
     }
 }
@@ -484,15 +492,15 @@ fun AddCarOptionsBottomSheet(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Добавить автомобиль",
+            text = stringResource(R.string.add_car_2),
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(bottom = 24.dp)
         )
 
         AddOptionItem(
             icon = Icons.Default.QrCodeScanner,
-            title = "Ввести VIN",
-            description = "Через 17-значный код",
+            title = stringResource(R.string.input_vin),
+            description =  stringResource(R.string.digit_code_17),
             onClick = onVinClick
         )
 
@@ -500,8 +508,8 @@ fun AddCarOptionsBottomSheet(
 
         AddOptionItem(
             icon = Icons.Default.CameraAlt,
-            title = "Сканировать СТС",
-            description = "Через камеру телефона",
+            title = stringResource(R.string.scan_sts),
+            description = stringResource(R.string.camera_phone),
             onClick = onScanStsClick
         )
 
@@ -509,15 +517,15 @@ fun AddCarOptionsBottomSheet(
 
         AddOptionItem(
             icon = Icons.Default.Edit,
-            title = "Заполнить вручную",
-            description = "Марка, модель, год, номер и т.д.",
+            title = stringResource(R.string.fill_manually),
+            description = stringResource(R.string.transfer),
             onClick = onManualClick
         )
 
         Spacer(modifier = Modifier.height(32.dp))
 
         TextButton(onClick = onDismiss) {
-            Text("Отмена", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text( stringResource(R.string.cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

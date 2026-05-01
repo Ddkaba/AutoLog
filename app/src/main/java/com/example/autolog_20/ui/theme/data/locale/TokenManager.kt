@@ -12,12 +12,14 @@ import androidx.core.content.edit
 object TokenManager {
 
     private const val PREFS_NAME = "auth_prefs"
-    private const val KEY_CURRENT_TIRES = "current_tires"
-    private const val KEY_TIRES_LAST_CHECK = "tires_last_check_timestamp"
+    private const val KEY_CURRENT_TIRES_PREFIX = "current_tires_"
+    private const val KEY_TIRES_LAST_CHECK_PREFIX = "tires_last_check_timestamp_"
     private const val KEY_REFRESH_TOKEN = "refresh_token"
     private const val KEY_ACCESS_TOKEN = "access_token"
     private const val KEY_USER_ID = "user_id"
     private const val KEY_USERNAME = "username"
+
+    private const val PREF_FIRST_TIME_MAINTENANCE_PREFIX = "first_time_maintenance_"
 
     private lateinit var prefs: SharedPreferences
 
@@ -44,37 +46,53 @@ object TokenManager {
         }
     }
 
+    fun isFirstTimeOnMaintenance(numberPlate: String): Boolean {
+        return prefs.getBoolean(PREF_FIRST_TIME_MAINTENANCE_PREFIX + numberPlate, true)
+    }
+
+    fun setMaintenanceInfoShown(numberPlate: String) {
+        prefs.edit().putBoolean(PREF_FIRST_TIME_MAINTENANCE_PREFIX + numberPlate, false).apply()
+    }
+
+    fun clearMaintenanceData(numberPlate: String) {
+        prefs.edit().remove(PREF_FIRST_TIME_MAINTENANCE_PREFIX + numberPlate).apply()
+    }
+
     fun getAccessToken(): String? = prefs.getString(KEY_ACCESS_TOKEN, null)
     fun getRefreshToken(): String? = prefs.getString(KEY_REFRESH_TOKEN, null)
     fun getUserId(): Int = prefs.getInt(KEY_USER_ID, -1)
     fun getUsername(): String? = prefs.getString(KEY_USERNAME, null)
     fun isLoggedIn(): Boolean = !getAccessToken().isNullOrBlank() && getUserId() != -1
 
-    fun setCurrentTires(tireType: String) {
+    fun setCurrentTires(numberPlate: String, tireType: String) {
         prefs.edit {
-            putString(KEY_CURRENT_TIRES, tireType)
-                .putLong(KEY_TIRES_LAST_CHECK, System.currentTimeMillis())
+            putString(KEY_CURRENT_TIRES_PREFIX + numberPlate, tireType)
+            putLong(KEY_TIRES_LAST_CHECK_PREFIX + numberPlate, System.currentTimeMillis())
         }
-        Log.d("TokenManager", "Сохранён тип резины: $tireType")
+        Log.d("TokenManager", "Сохранён тип резины для авто $numberPlate: $tireType")
     }
 
-    fun getCurrentTires(): String? {
-        val type = prefs.getString(KEY_CURRENT_TIRES, null)
-        Log.d("TokenManager", "Получен тип резины: $type")
+    fun getCurrentTires(numberPlate: String): String? {
+        val type = prefs.getString(KEY_CURRENT_TIRES_PREFIX + numberPlate, null)
         return type
     }
 
-    fun shouldShowTireDialog(): Boolean {
-        val hasTireType = !getCurrentTires().isNullOrBlank()
-        Log.d("TokenManager", "Нужно показать диалог выбора резины? $!hasTireType")
+
+    fun shouldShowTireDialog(numberPlate: String): Boolean {
+        val hasTireType = !getCurrentTires(numberPlate).isNullOrBlank()
         return !hasTireType
+    }
+
+    fun clearTireData(numberPlate: String) {
+        prefs.edit {
+            remove(KEY_CURRENT_TIRES_PREFIX + numberPlate)
+            remove(KEY_TIRES_LAST_CHECK_PREFIX + numberPlate)
+        }
     }
 
     fun clearTokens() {
         prefs.edit()
             .clear()
-            .remove(KEY_CURRENT_TIRES)
-            .remove(KEY_TIRES_LAST_CHECK)
             .apply()
         Log.d("TokenManager", "Все токены и данные о резине очищены при выходе")
     }

@@ -12,5 +12,10 @@ data class RecommendationResponse(
     val serviceType: String,
     @SerializedName("recommended_mileage")
     val recommendedMileage: Int,
-    val description: String
+    @SerializedName("description")
+    val description: String,
+    @SerializedName("next_recommended_mileage")
+    val nextRecommendedMileage: Int?,
+    @SerializedName("last_service_record_id")
+    val lastServiceRecordId: Int?
 )

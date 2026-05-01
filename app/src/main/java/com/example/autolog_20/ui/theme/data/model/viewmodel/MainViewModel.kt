@@ -79,6 +79,8 @@ class MainViewModel(
                 val deleteResponse = authApi.deleteCar(carId)
 
                 if (deleteResponse.isSuccessful) {
+                    TokenManager.clearTireData(numberPlate)
+                    TokenManager.clearMaintenanceData(numberPlate)
                     loadCars()
                     onSuccess()
                 } else {

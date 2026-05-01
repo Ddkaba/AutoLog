@@ -37,6 +37,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -113,16 +114,14 @@ import com.example.autolog_20.ui.theme.data.api.RetrofitClient
 import com.example.autolog_20.ui.theme.data.model.ExpenseItem
 import com.example.autolog_20.ui.theme.data.model.viewmodel.ExpensesViewModel
 import java.time.LocalDate
-import java.util.Locale
 import com.example.autolog_20.ui.theme.PastelExpenseBackground
+import com.example.autolog_20.ui.theme.data.model.DateFormat
 import com.example.autolog_20.ui.theme.data.model.ExpensesUiState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.jar.Manifest
 import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -449,24 +448,6 @@ private fun getPeriodLabel(period: String): String {
 }
 private fun Double.format(digits: Int) = "%.${digits}f".format(this)
 
-private fun formatDateHeader(dateStr: String): String {
-    val date = try {
-        LocalDate.parse(dateStr)
-    } catch (e: Exception) {
-        return dateStr
-    }
-
-    return when {
-        date == LocalDate.now() -> "Сегодня"
-        date == LocalDate.now().minusDays(1) -> "Вчера"
-        else -> {
-            val formatter = DateTimeFormatter.ofPattern("dd MMMM yyyy",
-                Locale("ru")
-            )
-            date.format(formatter)
-        }
-    }
-}
 
 @Composable
 fun ExpensesList(
@@ -483,12 +464,12 @@ fun ExpensesList(
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         groupedExpenses.forEach { (date, expensesOnDate) ->
             item(key = "header_$date") {
                 Text(
-                    text = formatDateHeader(date),
+                    text = DateFormat.formatDateHeader(date),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
@@ -634,11 +615,6 @@ fun ExpenseItemCard(
                     text = expense.category?.name ?: "Прочие расходы",
                     style = MaterialTheme.typography.titleMedium
                 )
-                Text(
-                    text = expense.date,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
 
             Text(
@@ -760,15 +736,27 @@ fun AddExpenseDialog(
     var selectedCategory by remember { mutableStateOf("Топливо") }
     var selectedCategoryId by remember { mutableStateOf(3) }
     var amount by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf(LocalDate.now().toString()) }
+    var dateInput by remember { mutableStateOf(LocalDate.now().toString()) }
     var description by remember { mutableStateOf("") }
     var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
     var showPhotoSourceSheet by remember { mutableStateOf(false) }
     var tempPhotoFile by remember { mutableStateOf<File?>(null) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
     var categoryMenuExpanded by remember { mutableStateOf(false) }
 
     val cameraPermission = android.Manifest.permission.CAMERA
+
+    // Получаем текущую дату для DatePicker
+    val currentDate = try {
+        java.time.LocalDate.parse(dateInput)
+    } catch (e: Exception) {
+        java.time.LocalDate.now()
+    }
+
+    val datePickerState = androidx.compose.material3.rememberDatePickerState(
+        initialSelectedDateMillis = currentDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+    )
 
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture()
@@ -789,7 +777,6 @@ fun AddExpenseDialog(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-
             openCamera(context, tempPhotoFile, cameraLauncher)
         } else {
             Toast.makeText(context, "Для фото чека нужно разрешение на камеру", Toast.LENGTH_SHORT).show()
@@ -797,14 +784,12 @@ fun AddExpenseDialog(
         }
     }
 
-    // Ланчер для галереи
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri ->
         selectedPhotoUri = uri
         showPhotoSourceSheet = false
     }
-
 
     val categories = listOf(
         1 to "Техническое обслуживание",
@@ -882,12 +867,22 @@ fun AddExpenseDialog(
 
                 Spacer(Modifier.height(12.dp))
 
-                // Дата
                 OutlinedTextField(
-                    value = date,
-                    onValueChange = { date = it },
-                    label = { Text("Дата (YYYY-MM-DD)") },
-                    modifier = Modifier.fillMaxWidth()
+                    value = DateFormat.formatDateToDisplay(dateInput),
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Дата") },
+                    placeholder = { Text("Выберите дату") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDatePicker = true },
+                    trailingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.DateRange,
+                            contentDescription = "Выбрать дату",
+                            modifier = Modifier.clickable { showDatePicker = true }
+                        )
+                    }
                 )
 
                 Spacer(Modifier.height(12.dp))
@@ -935,7 +930,7 @@ fun AddExpenseDialog(
                             selectedCategory,
                             selectedCategoryId,
                             amt,
-                            date,
+                            dateInput,
                             description.ifBlank { null },
                             selectedPhotoUri
                         )
@@ -952,6 +947,38 @@ fun AddExpenseDialog(
             }
         }
     )
+
+    // DatePicker диалог
+    if (showDatePicker) {
+        androidx.compose.material3.DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val selectedDate = java.time.Instant.ofEpochMilli(millis)
+                                .atZone(java.time.ZoneId.systemDefault())
+                                .toLocalDate()
+                            dateInput = selectedDate.toString()
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Отмена")
+                }
+            }
+        ) {
+            androidx.compose.material3.DatePicker(
+                state = datePickerState,
+                showModeToggle = false
+            )
+        }
+    }
 
     // Bottom Sheet для выбора источника фото
     if (showPhotoSourceSheet) {
@@ -1478,7 +1505,7 @@ fun ExpenseDetailBottomSheet(
 
             DetailRow("Сумма", "${expense.amount} ₽")
 
-            DetailRow("Дата", expense.date)
+            DetailRow("Дата", DateFormat.formatDateToDisplay(expense.date))
 
             if (expense.mileage != null) {
                 DetailRow("Пробег", "${expense.mileage} км")
@@ -1516,10 +1543,21 @@ fun EditExpenseBottomSheet(
     var descriptionInput by remember { mutableStateOf(expense.description ?: "") }
     var amountError by remember { mutableStateOf<String?>(null) }
     var dateError by remember { mutableStateOf<String?>(null) }
+    var showDatePicker by remember { mutableStateOf(false) }
 
     val hasChanges = amountInput.toDoubleOrNull() != expense.amount.toDoubleOrNull() ||
             dateInput != expense.date ||
             descriptionInput != (expense.description ?: "")
+
+    val currentDate = try {
+        java.time.LocalDate.parse(dateInput)
+    } catch (e: Exception) {
+        java.time.LocalDate.now()
+    }
+
+    val datePickerState = androidx.compose.material3.rememberDatePickerState(
+        initialSelectedDateMillis = currentDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+    )
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1538,6 +1576,7 @@ fun EditExpenseBottomSheet(
                 modifier = Modifier.padding(bottom = 24.dp)
             )
 
+            // Сумма
             OutlinedTextField(
                 value = amountInput,
                 onValueChange = {
@@ -1558,24 +1597,32 @@ fun EditExpenseBottomSheet(
             Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
-                value = dateInput,
-                onValueChange = {
-                    dateInput = it
-                    dateError = null
-                },
-                label = { Text("Дата (YYYY-MM-DD)") },
-                placeholder = { Text("2024-01-01") },
-                modifier = Modifier.fillMaxWidth(),
+                value = DateFormat.formatDateToDisplay(dateInput),
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Дата") },
+                placeholder = { Text("Выберите дату") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showDatePicker = true },
                 isError = dateError != null,
                 supportingText = {
                     if (dateError != null) {
                         Text(dateError!!, color = MaterialTheme.colorScheme.error)
                     }
+                },
+                trailingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.DateRange,
+                        contentDescription = "Выбрать дату",
+                        modifier = Modifier.clickable { showDatePicker = true }
+                    )
                 }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Описание
             OutlinedTextField(
                 value = descriptionInput,
                 onValueChange = { descriptionInput = it },
@@ -1616,7 +1663,7 @@ fun EditExpenseBottomSheet(
 
                         val date = if (dateInput.isNotBlank()) {
                             if (!dateInput.matches(Regex("\\d{4}-\\d{2}-\\d{2}"))) {
-                                dateError = "Неверный формат даты (ГГГГ-ММ-ДД)"
+                                dateError = "Неверный формат даты"
                                 hasError = true
                                 null
                             } else {
@@ -1643,6 +1690,38 @@ fun EditExpenseBottomSheet(
                 }
             }
             Spacer(modifier = Modifier.height(32.dp))
+        }
+    }
+
+    if (showDatePicker) {
+        androidx.compose.material3.DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val selectedDate = java.time.Instant.ofEpochMilli(millis)
+                                .atZone(java.time.ZoneId.systemDefault())
+                                .toLocalDate()
+                            dateInput = selectedDate.toString()
+                            dateError = null
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Отмена")
+                }
+            }
+        ) {
+            androidx.compose.material3.DatePicker(
+                state = datePickerState,
+                showModeToggle = false
+            )
         }
     }
 }
