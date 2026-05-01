@@ -1,6 +1,7 @@
 package com.example.autolog_20.ui.theme.data.api
 
 import com.example.autolog_20.ui.theme.data.model.ExpenseItem
+import com.example.autolog_20.ui.theme.data.model.ServiceRecord
 import com.example.autolog_20.ui.theme.data.model.request.AddCarToUserRequest
 import com.example.autolog_20.ui.theme.data.model.request.AddMileageRequest
 import com.example.autolog_20.ui.theme.data.model.request.AddRecommendationRequest
@@ -12,9 +13,11 @@ import com.example.autolog_20.ui.theme.data.model.response.CarDetailResponse
 import com.example.autolog_20.ui.theme.data.model.response.CarResponse
 import com.example.autolog_20.ui.theme.data.model.response.ExpensesResponse
 import com.example.autolog_20.ui.theme.data.model.request.LoginRequest
+import com.example.autolog_20.ui.theme.data.model.request.RecommendationUpdateRequest
 import com.example.autolog_20.ui.theme.data.model.response.LoginResponse
 import com.example.autolog_20.ui.theme.data.model.response.RecommendationResponse
 import com.example.autolog_20.ui.theme.data.model.request.RegisterRequest
+import com.example.autolog_20.ui.theme.data.model.request.ServiceUpdateRequest
 import com.example.autolog_20.ui.theme.data.model.response.AddCarToUserResponse
 import com.example.autolog_20.ui.theme.data.model.response.CarAddResponse
 import com.example.autolog_20.ui.theme.data.model.response.MileageResponse
@@ -118,6 +121,19 @@ interface AuthApi {
         @Part receipt_photo: MultipartBody.Part? = null
     ): Response<Unit>
 
+    @Multipart
+    @POST("api/cars/{carId}/service/create/")
+    suspend fun createServiceRecord(
+        @Path("carId") carId: Int,
+        @Part("service_type") serviceType: RequestBody,
+        @Part("date") date: RequestBody,
+        @Part("mileage") mileage: RequestBody,
+        @Part("cost") cost: RequestBody,
+        @Part("notes") notes: RequestBody? = null,
+        @Part("recommendation_id") recommendationId: RequestBody? = null,
+        @Part receipt_photo: MultipartBody.Part? = null
+    ): Response<ServiceRecord>
+
     @POST("api/cars/")
     suspend fun addCar(
         @Body carData: CreateCarRequest
@@ -145,6 +161,11 @@ interface AuthApi {
         @Path("expenseId") expenseId: Int
     ): Response<Unit>
 
+    @DELETE("api/cars/{carId}/service/{recordId}/")
+    suspend fun deleteServiceRecord(
+        @Path("carId") carId: Int,
+        @Path("recordId") recordId: Int
+    ): Response<Unit>
     @PATCH("api/cars/{carId}/")
     suspend fun updateCar(
         @Path("carId") carId: Int,
@@ -158,6 +179,19 @@ interface AuthApi {
         @Body request: ExpenseUpdateRequest
     ): Response<ExpenseItem>
 
+    @PATCH("api/cars/{carId}/service/{recordId}/")
+    suspend fun updateServiceRecord(
+        @Path("carId") carId: Int,
+        @Path("recordId") recordId: Int,
+        @Body request: ServiceUpdateRequest
+    ): Response<ServiceRecord>
+
+    @PATCH("api/cars/{carId}/recommendations/{recommendationId}/")
+    suspend fun updateRecommendation(
+        @Path("carId") carId: Int,
+        @Path("recommendationId") recommendationId: Int,
+        @Body request: RecommendationUpdateRequest
+    ): Response<RecommendationResponse>
 
     companion object {
         const val BASE_URL = "http://10.0.2.2:8000/"

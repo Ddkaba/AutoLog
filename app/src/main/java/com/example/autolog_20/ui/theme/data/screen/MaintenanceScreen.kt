@@ -1,5 +1,13 @@
 package com.example.autolog_20.ui.theme.data.screen
 
+import android.content.Context
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,15 +34,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.AlertDialog
@@ -42,6 +51,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -59,6 +69,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.Surface
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -72,6 +86,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -79,6 +94,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -94,6 +112,8 @@ import com.example.autolog_20.ui.theme.data.model.response.RecommendationRespons
 import com.example.autolog_20.ui.theme.data.model.viewmodel.MaintenanceViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.io.File
+import java.time.LocalDate
 import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -102,11 +122,12 @@ fun MaintenanceScreen(
     navController: NavController,
     numberPlate: String
 ) {
+    val context = LocalContext.current
     val viewModel: MaintenanceViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return MaintenanceViewModel(RetrofitClient.api, numberPlate) as T
+                return MaintenanceViewModel(RetrofitClient.api, numberPlate, context) as T
             }
         }
     )
@@ -114,17 +135,28 @@ fun MaintenanceScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val currentMileage by viewModel.currentMileage.collectAsStateWithLifecycle()
 
-    var selectedFilter by remember { mutableStateOf("planned") }
+    var selectedFilter by remember { mutableStateOf("completed") }
     var selectedRecommendation by remember { mutableStateOf<RecommendationResponse?>(null) }
     var editingRecommendation by remember { mutableStateOf<RecommendationResponse?>(null) }
     var expanded by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
     var selectedService by remember { mutableStateOf<ServiceRecord?>(null) }
     var editingService by remember { mutableStateOf<ServiceRecord?>(null) }
+    var showAddServiceSheet by remember { mutableStateOf(false) }
+    val recommendationsForSheet by viewModel.recommendationsForSheet.collectAsStateWithLifecycle()
+
 
     var receiptUrl by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val filters = listOf(
+        "completed" to "Выполненные",
+        "planned" to "Запланированные"
+    )
+
+    val currentFilterTitle =
+        filters.find { it.first == selectedFilter }?.second ?: "Выполненные"
 
     LaunchedEffect(Unit) {
         val isFirstTime = TokenManager.isFirstTimeOnMaintenance(numberPlate)
@@ -134,13 +166,11 @@ fun MaintenanceScreen(
         }
     }
 
-    val filters = listOf(
-        "planned" to "Запланированные",
-        "completed" to "Выполненные"
-    )
-
-    val currentFilterTitle =
-        filters.find { it.first == selectedFilter }?.second ?: "Запланированные"
+    LaunchedEffect(showAddServiceSheet) {
+        if (showAddServiceSheet) {
+            viewModel.loadRecommendationsForSheet()
+        }
+    }
 
     LaunchedEffect(selectedFilter) {
         when (selectedFilter) {
@@ -152,7 +182,7 @@ fun MaintenanceScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Техническое обслуживание") },
+                title = { Text("ТО") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Назад")
@@ -351,7 +381,7 @@ fun MaintenanceScreen(
 
             if (selectedFilter == "completed") {
                 FloatingActionButton(
-                    onClick = { /* TODO: открыть диалог добавления выполненного ТО */ },
+                    onClick = { showAddServiceSheet = true },
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .padding(16.dp),
@@ -360,7 +390,7 @@ fun MaintenanceScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
-                        contentDescription = "Добавить выполненное ТО"
+                        contentDescription = "Добавить запись ТО"
                     )
                 }
             }
@@ -381,17 +411,9 @@ fun MaintenanceScreen(
             }
 
             if (receiptUrl != null) {
-                AlertDialog(
-                    onDismissRequest = { receiptUrl = null },
-                    confirmButton = {
-                        TextButton(onClick = { receiptUrl = null }) {
-                            Text("Закрыть")
-                        }
-                    },
-                    text = {
-                        // Здесь можно показать изображение или WebView
-                        Text("Чек: $receiptUrl")
-                    }
+                ReceiptWebViewDialog(
+                    imageUrl = receiptUrl!!,
+                    onDismiss = { receiptUrl = null }
                 )
             }
 
@@ -462,6 +484,36 @@ fun MaintenanceScreen(
                 )
             }
 
+            if (showAddServiceSheet) {
+                AddServiceBottomSheet(
+                    recommendations = recommendationsForSheet,
+                    currentMileage = currentMileage,  // Добавляем передачу текущего пробега
+                    onDismiss = { showAddServiceSheet = false },
+                    onAdd = { serviceType, date, mileage, cost, notes, recommendationId, photoUri ->
+                        viewModel.addServiceRecord(
+                            serviceType = serviceType,
+                            date = date,
+                            mileage = mileage,
+                            cost = cost,
+                            notes = notes,
+                            recommendationId = recommendationId,
+                            photoUri = photoUri,
+                            onSuccess = {
+                                showAddServiceSheet = false
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Запись ТО добавлена")
+                                }
+                            },
+                            onError = { error ->
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(error)
+                                }
+                            }
+                        )
+                    }
+                )
+            }
+
             if (selectedRecommendation != null) {
                 RecommendationDetailBottomSheet(
                     recommendation = selectedRecommendation!!,
@@ -477,10 +529,11 @@ fun MaintenanceScreen(
                 EditRecommendationBottomSheet(
                     recommendation = editingRecommendation!!,
                     onDismiss = { editingRecommendation = null },
-                    onSave = { mileage, description ->
+                    onSave = { mileage, serviceType, description ->
                         viewModel.updateRecommendation(
                             recommendation = editingRecommendation!!,
                             recommendedMileage = mileage,
+                            serviceType = serviceType,
                             description = description,
                             onSuccess = {
                                 editingRecommendation = null
@@ -499,6 +552,11 @@ fun MaintenanceScreen(
             }
         }
     }
+}
+
+@Composable
+fun ReceiptDialog(onDismissRequest: () -> Unit, confirmButton: () -> Unit, text: () -> Unit) {
+    TODO("Not yet implemented")
 }
 
 
@@ -815,7 +873,7 @@ fun ServiceDetailBottomSheet(
             Spacer(modifier = Modifier.height(24.dp))
             DetailRow("Тип", service.serviceType)
             Spacer(modifier = Modifier.height(12.dp))
-            DetailRow("Дата", DateFormat.formatDateHeader(service.date))
+            DetailRow("Дата", DateFormat.formatDateToDisplay(service.date))
             Spacer(modifier = Modifier.height(12.dp))
             DetailRow("Пробег", "${service.mileage} км")
             Spacer(modifier = Modifier.height(12.dp))
@@ -1025,7 +1083,6 @@ fun EditServiceBottomSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Примечания
             OutlinedTextField(
                 value = notesInput,
                 onValueChange = { notesInput = it },
@@ -1125,13 +1182,17 @@ fun EditServiceBottomSheet(
 fun EditRecommendationBottomSheet(
     recommendation: RecommendationResponse,
     onDismiss: () -> Unit,
-    onSave: (recommendedMileage: Int, description: String) -> Unit
+    onSave: (recommendedMileage: Int?, serviceType: String?, description: String?) -> Unit
 ) {
     var mileageInput by remember { mutableStateOf(recommendation.recommendedMileage.toString()) }
+    var serviceTypeInput by remember { mutableStateOf(recommendation.serviceType) }
     var descriptionInput by remember { mutableStateOf(recommendation.description) }
+
     var mileageError by remember { mutableStateOf<String?>(null) }
 
+    // Проверяем, есть ли изменения
     val hasChanges = mileageInput.toIntOrNull() != recommendation.recommendedMileage ||
+            serviceTypeInput != recommendation.serviceType ||
             descriptionInput != recommendation.description
 
     ModalBottomSheet(
@@ -1150,6 +1211,16 @@ fun EditRecommendationBottomSheet(
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(bottom = 24.dp)
             )
+
+            // Тип обслуживания
+            OutlinedTextField(
+                value = serviceTypeInput,
+                onValueChange = { serviceTypeInput = it },
+                label = { Text("Тип обслуживания") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Рекомендуемый пробег
             OutlinedTextField(
@@ -1195,13 +1266,31 @@ fun EditRecommendationBottomSheet(
 
                 Button(
                     onClick = {
-                        val mileage = mileageInput.toIntOrNull()
-                        if (mileage == null || mileage <= 0) {
-                            mileageError = "Введите корректный пробег"
-                            return@Button
+                        var hasError = false
+
+                        val mileage = if (mileageInput.isNotBlank()) {
+                            val parsedMileage = mileageInput.toIntOrNull()
+                            if (parsedMileage == null || parsedMileage <= 0) {
+                                mileageError = "Введите корректный пробег"
+                                hasError = true
+                                null
+                            } else {
+                                parsedMileage
+                            }
+                        } else {
+                            null
                         }
 
-                        onSave(mileage, descriptionInput)
+                        val serviceType = serviceTypeInput.ifBlank { null }
+                        val description = descriptionInput.ifBlank { null }
+
+                        if (!hasError) {
+                            val finalMileage = if (mileage != recommendation.recommendedMileage) mileage else null
+                            val finalServiceType = if (serviceType != recommendation.serviceType) serviceType else null
+                            val finalDescription = if (description != recommendation.description) description else null
+
+                            onSave(finalMileage, finalServiceType, finalDescription)
+                        }
                     },
                     modifier = Modifier.weight(1f),
                     enabled = hasChanges
@@ -1213,3 +1302,541 @@ fun EditRecommendationBottomSheet(
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddServiceBottomSheet(
+    recommendations: List<RecommendationResponse>,
+    currentMileage: Int?,
+    onDismiss: () -> Unit,
+    onAdd: (
+        serviceType: String,
+        date: String,
+        mileage: Int,
+        cost: Double,
+        notes: String?,
+        recommendationId: Int?,
+        photoUri: Uri?
+    ) -> Unit
+) {
+    val context = LocalContext.current
+    var serviceTypeInput by remember { mutableStateOf("") }
+    var dateInput by remember { mutableStateOf(LocalDate.now().toString()) }
+    var mileageInput by remember { mutableStateOf("") }
+    var costInput by remember { mutableStateOf("") }
+    var notesInput by remember { mutableStateOf("") }
+    var selectedRecommendationId by remember { mutableStateOf<Int?>(null) }
+    var selectedRecommendationType by remember { mutableStateOf<String?>(null) }
+    var mileageError by remember { mutableStateOf<String?>(null) }
+    var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var showPhotoSourceSheet by remember { mutableStateOf(false) }
+    var tempPhotoFile by remember { mutableStateOf<File?>(null) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    var recommendationExpanded by remember { mutableStateOf(false) }
+
+    var dateError by remember { mutableStateOf<String?>(null) }
+
+    val cameraPermission = android.Manifest.permission.CAMERA
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            tempPhotoFile?.let { file ->
+                selectedPhotoUri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.fileprovider",
+                    file
+                )
+            }
+        }
+        showPhotoSourceSheet = false
+    }
+
+    val cameraPermissionState = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            openCameraFunction(context, tempPhotoFile, cameraLauncher)
+        } else {
+            Toast.makeText(context, "Для фото чека нужно разрешение на камеру", Toast.LENGTH_SHORT).show()
+            showPhotoSourceSheet = false
+        }
+    }
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri ->
+        selectedPhotoUri = uri
+        showPhotoSourceSheet = false
+    }
+
+    val currentDate = try {
+        java.time.LocalDate.parse(dateInput)
+    } catch (e: Exception) {
+        java.time.LocalDate.now()
+    }
+
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = currentDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+    )
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Добавление ТО",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
+
+            // Тип обслуживания
+            OutlinedTextField(
+                value = serviceTypeInput,
+                onValueChange = { serviceTypeInput = it },
+                label = { Text("Тип обслуживания *") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Дата
+            OutlinedTextField(
+                value = DateFormat.formatDateToDisplay(dateInput),
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Дата *") },
+                placeholder = { Text("Выберите дату") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showDatePicker = true },
+                isError = dateError != null,
+                supportingText = {
+                    if (dateError != null) {
+                        Text(dateError!!, color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                trailingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.DateRange,
+                        contentDescription = "Выбрать дату",
+                        modifier = Modifier.clickable { showDatePicker = true }
+                    )
+                }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            val mileageValue = mileageInput.toIntOrNull()
+            val isMileageError = if (currentMileage != null && mileageValue != null) {
+                mileageValue > currentMileage
+            } else {
+                false
+            }
+            val mileageErrorMessage = when {
+                currentMileage == null -> "Пробег не может быть пустым"
+                mileageValue == null || mileageValue <= 0 -> "Введите корректный пробег"
+                mileageValue > currentMileage -> "Пробег не может превышать текущий ($currentMileage км)"
+                else -> null
+            }
+
+            OutlinedTextField(
+                value = mileageInput,
+                onValueChange = {
+                    mileageInput = it.filter { c -> c.isDigit() }
+                    mileageError = null
+                },
+                label = { Text("Пробег (км) *") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(),
+                isError = isMileageError || mileageError != null,
+                supportingText = {
+                    when {
+                        mileageError != null -> Text(mileageError!!, color = MaterialTheme.colorScheme.error)
+                        isMileageError && currentMileage != null -> Text(
+                            "Пробег не может превышать $currentMileage км",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Стоимость
+            OutlinedTextField(
+                value = costInput,
+                onValueChange = { costInput = it.filter { c -> c.isDigit() || c == '.' } },
+                label = { Text("Стоимость (₽) *") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (recommendations.isNotEmpty()) {
+                ExposedDropdownMenuBox(
+                    expanded = recommendationExpanded,
+                    onExpandedChange = { recommendationExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = selectedRecommendationType ?: "Выберите рекомендацию (необязательно)",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Связать с рекомендацией") },
+                        trailingIcon = {
+                            Icon(
+                                imageVector = if (recommendationExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = null
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = recommendationExpanded,
+                        onDismissRequest = { recommendationExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Без рекомендации") },
+                            onClick = {
+                                selectedRecommendationId = null
+                                selectedRecommendationType = null
+                                recommendationExpanded = false
+                            }
+                        )
+                        recommendations.forEach { recommendation ->
+                            DropdownMenuItem(
+                                text = {
+                                    Column {
+                                        Text(
+                                            text = recommendation.serviceType,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Medium
+                                        )
+                                        Text(
+                                            text = "Пробег: ${recommendation.nextRecommendedMileage ?: recommendation.recommendedMileage} км",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                },
+                                onClick = {
+                                    selectedRecommendationId = recommendation.recommendationId
+                                    selectedRecommendationType = recommendation.serviceType
+                                    recommendationExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // Примечания
+            OutlinedTextField(
+                value = notesInput,
+                onValueChange = { notesInput = it },
+                label = { Text("Примечания (необязательно)") },
+                maxLines = 3,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Кнопка прикрепления чека
+            Button(
+                onClick = { showPhotoSourceSheet = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CameraAlt,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(if (selectedPhotoUri == null) "Прикрепить чек" else "Чек прикреплён ✓")
+            }
+
+            if (selectedPhotoUri != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Фото выбрано",
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Отмена")
+                }
+
+                Button(
+                    onClick = {
+                        val mileage = mileageInput.toIntOrNull()
+                        val cost = costInput.toDoubleOrNull()
+
+                        if (serviceTypeInput.isBlank()) {
+                            Toast.makeText(context, "Введите тип обслуживания", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        if (mileage == null || mileage <= 0) {
+                            Toast.makeText(context, "Введите корректный пробег", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+                        if (cost == null || cost <= 0) {
+                            Toast.makeText(context, "Введите корректную стоимость", Toast.LENGTH_SHORT).show()
+                            return@Button
+                        }
+
+                        onAdd(serviceTypeInput, dateInput, mileage,
+                            cost, notesInput.ifBlank { null },
+                            selectedRecommendationId, selectedPhotoUri
+                        )
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Добавить")
+                }
+            }
+            Spacer(modifier = Modifier.height(32.dp))
+        }
+    }
+
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val selectedDate = java.time.Instant.ofEpochMilli(millis)
+                                .atZone(java.time.ZoneId.systemDefault())
+                                .toLocalDate()
+                            dateInput = selectedDate.toString()
+                            dateError = null
+                        }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Отмена")
+                }
+            }
+        ) {
+            DatePicker( state = datePickerState, showModeToggle = false
+            )
+        }
+    }
+
+    if (showPhotoSourceSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showPhotoSourceSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Выберите источник",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(bottom = 24.dp)
+                )
+
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                        .clickable {
+                            galleryLauncher.launch("image/*")
+                        },
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PhotoLibrary,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            text = "Выбрать из галереи",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                }
+
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                        .clickable {
+                            if (ContextCompat.checkSelfPermission(
+                                    context,
+                                    cameraPermission
+                                ) == PackageManager.PERMISSION_GRANTED
+                            ) {
+                                val timeStamp = System.currentTimeMillis()
+                                val photoFile = File(context.cacheDir, "service_$timeStamp.jpg")
+                                tempPhotoFile = photoFile
+                                openCameraFunction(context, photoFile, cameraLauncher)
+                            } else {
+                                cameraPermissionState.launch(cameraPermission)
+                            }
+                            showPhotoSourceSheet = false
+                        },
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CameraAlt,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            text = "Сделать фото",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                TextButton(onClick = { showPhotoSourceSheet = false }) {
+                    Text("Отмена")
+                }
+            }
+        }
+    }
+}
+
+private fun openCameraFunction(
+    context: Context,
+    photoFile: File?,
+    cameraLauncher: androidx.activity.result.ActivityResultLauncher<Uri>
+) {
+    photoFile?.let { file ->
+        val photoUri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
+        cameraLauncher.launch(photoUri)
+    }
+}
+
+@Composable
+fun ReceiptWebViewDialogForMaintenance(
+    imageUrl: String,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    var localUri by remember { mutableStateOf<Uri?>(null) }
+
+    LaunchedEffect(imageUrl) {
+        if (imageUrl.startsWith("file://")) {
+            try {
+                val filePath = imageUrl.substringAfter("file://")
+                val file = File(filePath)
+                if (file.exists()) {
+                    val uri = FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.fileprovider",
+                        file
+                    )
+                    localUri = uri
+                }
+            } catch (e: Exception) {
+                localUri = Uri.parse(imageUrl)
+            }
+        } else {
+            localUri = Uri.parse(imageUrl)
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Закрыть")
+            }
+        },
+        text = {
+            localUri?.let { uri ->
+                AndroidView(
+                    factory = { ctx ->
+                        WebView(ctx).apply {
+                            settings.javaScriptEnabled = true
+                            settings.loadWithOverviewMode = true
+                            settings.useWideViewPort = true
+                            settings.builtInZoomControls = true
+                            settings.displayZoomControls = false
+                            settings.allowFileAccess = true
+                            settings.allowContentAccess = true
+                            settings.allowFileAccessFromFileURLs = true
+                            settings.allowUniversalAccessFromFileURLs = true
+
+                            webViewClient = WebViewClient()
+
+                            loadUrl(uri.toString())
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(400.dp)
+                )
+            } ?: run {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(400.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Не удалось загрузить изображение")
+                }
+            }
+        }
+    )
+}
+

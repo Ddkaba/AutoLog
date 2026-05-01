@@ -246,7 +246,6 @@ class ExpensesViewModel(
                     val bytes = inputStream?.readBytes() ?: ByteArray(0)
                     inputStream?.close()
 
-                    //val requestBody = bytes.toRequestBody("image/jpeg".toMediaType())
                     val mimeType = context.contentResolver.getType(uri) ?: "image/*"
                     val requestBody = bytes.toRequestBody(mimeType.toMediaType())
                     MultipartBody.Part.createFormData(
@@ -267,14 +266,13 @@ class ExpensesViewModel(
                 )
 
                 if (response.isSuccessful) {
-                    Log.d("ExpensesVM", "Расход успешно добавлен с чеком и категорией")
                     loadExpenses()
                     loadAllTimeTotal(carId)
                 } else {
-                    Log.e("ExpensesVM", "Ошибка: ${response.code()}")
+                    Timber.tag("ExpensesVM").e("Ошибка: ${response.code()}")
                 }
             } catch (e: Exception) {
-                Log.e("ExpensesVM", "Ошибка отправки", e)
+                Timber.tag("ExpensesVM").e(e, "Ошибка отправки")
             }
         }
     }

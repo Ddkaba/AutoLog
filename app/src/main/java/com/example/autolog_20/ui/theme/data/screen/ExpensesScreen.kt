@@ -810,7 +810,6 @@ fun AddExpenseDialog(
         text = {
             Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
 
-                // Выпадающий список категорий
                 Text(
                     text = "Категория",
                     style = MaterialTheme.typography.labelMedium
@@ -856,7 +855,6 @@ fun AddExpenseDialog(
 
                 Spacer(Modifier.height(16.dp))
 
-                // Сумма
                 OutlinedTextField(
                     value = amount,
                     onValueChange = { amount = it.filter { c -> c.isDigit() || c == '.' } },
@@ -887,7 +885,6 @@ fun AddExpenseDialog(
 
                 Spacer(Modifier.height(12.dp))
 
-                // Описание
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
@@ -898,7 +895,6 @@ fun AddExpenseDialog(
 
                 Spacer(Modifier.height(16.dp))
 
-                // Кнопка прикрепления чека
                 Button(
                     onClick = { showPhotoSourceSheet = true },
                     modifier = Modifier.fillMaxWidth()
