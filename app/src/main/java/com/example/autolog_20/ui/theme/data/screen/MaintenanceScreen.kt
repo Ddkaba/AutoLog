@@ -555,12 +555,6 @@ fun MaintenanceScreen(
 }
 
 @Composable
-fun ReceiptDialog(onDismissRequest: () -> Unit, confirmButton: () -> Unit, text: () -> Unit) {
-    TODO("Not yet implemented")
-}
-
-
-@Composable
 private fun DetailRow(label: String, value: String) {
     Column(
         modifier = Modifier.fillMaxWidth()
