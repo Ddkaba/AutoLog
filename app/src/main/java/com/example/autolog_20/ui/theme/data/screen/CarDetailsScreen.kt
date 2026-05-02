@@ -25,7 +25,6 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.LocationOff
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -34,7 +33,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -87,7 +85,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
-import timber.log.Timber
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
@@ -98,7 +95,7 @@ fun CarDetailsScreen(
     navController: NavController,
     numberPlate: String
 ) {
-    val context = LocalContext.current.applicationContext
+    val context = LocalContext.current
     val viewModel: CarDetailsViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
@@ -113,6 +110,8 @@ fun CarDetailsScreen(
     val tireRecommendation by viewModel.tireRecommendation.collectAsStateWithLifecycle()
     val monthlyExpenses by viewModel.monthlyExpenses.collectAsStateWithLifecycle()
     val isLoadingExpenses by viewModel.isLoadingExpenses.collectAsStateWithLifecycle()
+    val nextServiceDistance by viewModel.nextServiceDistance.collectAsStateWithLifecycle()
+    val currentMileage by viewModel.currentMileage.collectAsStateWithLifecycle()
 
     var expandedTires by remember { mutableStateOf(false) }
     var expandedExpenses by remember { mutableStateOf(false) }
@@ -132,9 +131,17 @@ fun CarDetailsScreen(
         )
     )
 
+    val hasLocationPermission = locationPermissionsState.allPermissionsGranted
+
     LaunchedEffect(carDetail) {
         if (carDetail != null && monthlyExpenses == null && !isLoadingExpenses) {
             viewModel.loadMonthlyExpenses(carDetail!!.carId)
+        }
+    }
+
+    LaunchedEffect(carDetail) {
+        if (carDetail != null) {
+            viewModel.loadCurrentMileageAndCalculateNextService(carDetail!!.carId)
         }
     }
 
@@ -144,10 +151,8 @@ fun CarDetailsScreen(
         }
     }
 
-    LaunchedEffect(locationPermissionsState.allPermissionsGranted) {
-        if (locationPermissionsState.allPermissionsGranted &&
-            !TokenManager.shouldShowTireDialog(numberPlate)
-        ) {
+    LaunchedEffect(hasLocationPermission, showTireDialog, carDetail) {
+        if (hasLocationPermission && !showTireDialog && carDetail != null) {
             viewModel.checkTireRecommendation()
         }
     }
@@ -163,7 +168,6 @@ fun CarDetailsScreen(
             showFirstTireSelection = true
         }
     }
-
 
     Scaffold(
         topBar = {
@@ -201,23 +205,48 @@ fun CarDetailsScreen(
 
             FeatureTile(
                 title = "ТО",
-                subtitle = "Ближайшее обслуживание",
+                subtitle = when {
+                    nextServiceDistance == null -> "Загрузка..."
+                    nextServiceDistance!! <= 0 -> "ТО требуется!"
+                    else -> "До ТО ${nextServiceDistance} км"
+                },
                 icon = rememberVectorPainter(Icons.Default.Build),
                 color = TileTo,
                 expanded = expandedTo,
                 onExpandChange = { expandedTo = it },
-                onClick = { navController.navigate("maintenance/${numberPlate}") }
+                onClick = { navController.navigate("maintenance/${numberPlate}") },
+                isClickable = true
             ) {
-                Text(
-                    text = "1 240 км",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Column {
+                    if (currentMileage != null) {
+                        Text(
+                            text = "Текущий пробег: ${currentMileage} км",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                    nextServiceDistance?.let {
+                        Text(
+                            text = if (it <= 0) {
+                                "Пробег превышен! Рекомендуется пройти ТО"
+                            } else {
+                                "Рекомендуемое ТО через ${nextServiceDistance} км"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (it <= 0)
+                                MaterialTheme.colorScheme.error
+                            else
+                                MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
             }
 
             FeatureTile(
                 title = "Покрышки",
                 subtitle = when {
+                    !hasLocationPermission -> "Нет доступа к геолокации"
                     TokenManager.shouldShowTireDialog(numberPlate) -> "Укажите тип резины"
                     tireRecommendation == null -> "Проверка..."
                     tireRecommendation?.shouldChangeTo != tireRecommendation?.currentTires ->
@@ -229,10 +258,15 @@ fun CarDetailsScreen(
                 expanded = expandedTires,
                 onExpandChange = { expandedTires = it },
                 onClick = {
-                    showTireSelectionSheet = true
-                    expandedTires = false
+                    if (hasLocationPermission) {
+                        showTireSelectionSheet = true
+                        expandedTires = false
+                    }
                 },
-                isWarning = TokenManager.shouldShowTireDialog(numberPlate) || (tireRecommendation?.shouldChangeTo != tireRecommendation?.currentTires)
+                isWarning = !hasLocationPermission ||
+                        TokenManager.shouldShowTireDialog(numberPlate) ||
+                        (tireRecommendation?.shouldChangeTo != tireRecommendation?.currentTires),
+                isClickable = hasLocationPermission
             ) {
                 val currentTires = TokenManager.getCurrentTires(numberPlate)
 
@@ -259,8 +293,7 @@ fun CarDetailsScreen(
 
             if (showFirstTireSelection) {
                 ModalBottomSheet(
-                    onDismissRequest = {
-                    },
+                    onDismissRequest = { },
                     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
                 ) {
                     TireTypeSelectionSheet(
@@ -304,9 +337,8 @@ fun CarDetailsScreen(
                 color = TileExpenses,
                 expanded = expandedExpenses,
                 onExpandChange = { expandedExpenses = it },
-                onClick = {
-                    navController.navigate("expenses/${numberPlate}")
-                }
+                onClick = { navController.navigate("expenses/${numberPlate}") },
+                isClickable = true
             ) {
                 when {
                     isLoadingExpenses -> {
@@ -349,12 +381,17 @@ fun CarDetailsScreen(
 
             FeatureTile(
                 title = "Пробег",
-                subtitle = "За месяц",
+                subtitle = if (!hasLocationPermission) "Нет доступа к геолокации" else "За месяц",
                 icon = rememberVectorPainter(Icons.Default.Speed),
                 color = TileMileage,
                 expanded = expandedMileage,
                 onExpandChange = { expandedMileage = it },
-                onClick = { navController.navigate("mileage/${numberPlate}") }
+                onClick = {
+                    if (hasLocationPermission) {
+                        navController.navigate("mileage/${numberPlate}")
+                    }
+                },
+                isClickable = hasLocationPermission
             ) {
                 Text(
                     text = "1 240 км",
@@ -370,64 +407,18 @@ fun CarDetailsScreen(
 
             FeatureTile(
                 title = "Поиск автосервисов",
-                subtitle = "Ближайшие СТО",
+                subtitle = if (!hasLocationPermission) "Нет доступа к геолокации" else "Ближайшие СТО",
                 icon = rememberVectorPainter(Icons.Default.LocationOn),
                 color = TileService,
                 expanded = false,
                 onExpandChange = {},
-                onClick = { navController.navigate("services/${numberPlate}") }
-            )
-        }
-    }
-
-    if (!locationPermissionsState.allPermissionsGranted) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                Icons.Default.LocationOff,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(72.dp)
-            )
-            Spacer(Modifier.height(24.dp))
-
-            Text(
-                "Для рекомендаций по замене резины нужен доступ к местоположению",
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(Modifier.height(16.dp))
-
-            if (locationPermissionsState.shouldShowRationale) {
-                Text(
-                    "Приложение использует ваше местоположение, чтобы определить температуру и сезон для рекомендаций по шинам.",
-                    textAlign = TextAlign.Center
-                )
-                Spacer(Modifier.height(24.dp))
-                Button(onClick = { locationPermissionsState.launchMultiplePermissionRequest() }) {
-                    Text("Разрешить доступ")
-                }
-            } else {
-                Text(
-                    "Разрешение на местоположение было отклонено.\nПерейдите в настройки приложения → Разрешения → Местоположение → Разрешить всё время или только при использовании.",
-                    textAlign = TextAlign.Center
-                )
-                Spacer(Modifier.height(24.dp))
-                Button(onClick = {
-                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                        data = Uri.fromParts("package", context.packageName, null)
+                onClick = {
+                    if (hasLocationPermission) {
+                        navController.navigate("services/${numberPlate}")
                     }
-                    context.startActivity(intent)
-                }) {
-                    Text("Открыть настройки")
-                }
-            }
+                },
+                isClickable = hasLocationPermission
+            )
         }
     }
 
@@ -572,11 +563,12 @@ fun FeatureTile(
     title: String,
     subtitle: String,
     icon: Painter,
-    color: androidx.compose.ui.graphics.Color,
+    color: Color,
     expanded: Boolean,
     onExpandChange: (Boolean) -> Unit,
     onClick: () -> Unit,
     isWarning: Boolean = false,
+    isClickable: Boolean = true,
     content: @Composable (() -> Unit) = {}
 ) {
     val backgroundColor = if (isWarning) Color(0x33FF5252) else color.copy(alpha = 0.12f)

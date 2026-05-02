@@ -10,6 +10,7 @@ import android.util.Log
 import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.autolog_20.R
@@ -54,6 +55,12 @@ class CarDetailsViewModel(
     private val _isLoadingExpenses = MutableStateFlow(false)
     val isLoadingExpenses: StateFlow<Boolean> = _isLoadingExpenses.asStateFlow()
 
+    private val _nextServiceDistance = MutableStateFlow<Int?>(null)
+    val nextServiceDistance: StateFlow<Int?> = _nextServiceDistance.asStateFlow()
+
+    private val _currentMileage = MutableStateFlow<Int?>(null)
+    val currentMileage: StateFlow<Int?> = _currentMileage.asStateFlow()
+
     private var isCheckingRecommendation = false
 
     init {
@@ -90,9 +97,8 @@ class CarDetailsViewModel(
                 if (response.isSuccessful) {
                     val recs = response.body() ?: emptyList()
                     if (recs.isEmpty()) {
-                        // Рекомендаций нет - показываем пустой список или сообщение
                         _uiState.value = CarDetailsUiState.Success(emptyList())
-                        Log.d("CarDetailsVM", "Нет рекомендаций для автомобиля ID: $carId")
+                        Timber.tag("CarDetailsVM").d("Нет рекомендаций для автомобиля ID: $carId")
                     } else {
                         _uiState.value = CarDetailsUiState.Success(recs)
                     }
@@ -101,7 +107,7 @@ class CarDetailsViewModel(
                 }
             } catch (e: Exception) {
                 _uiState.value = CarDetailsUiState.Error("Сетевая ошибка: ${e.localizedMessage}")
-                Log.e("CarDetailsVM", "Ошибка загрузки рекомендаций", e)
+                Timber.tag("CarDetailsVM").e(e, "Ошибка загрузки рекомендаций")
             }
         }
     }
@@ -133,10 +139,10 @@ class CarDetailsViewModel(
                         )
                     }
                 } else {
-                    Log.e("CarDetailsVM", "Ошибка загрузки расходов: ${response.code()}")
+                    Timber.tag("CarDetailsVM").e("Ошибка загрузки расходов: ${response.code()}")
                 }
             } catch (e: Exception) {
-                Log.e("CarDetailsVM", "Ошибка загрузки расходов", e)
+                Timber.tag("CarDetailsVM").e(e, "Ошибка загрузки расходов")
             } finally {
                 _isLoadingExpenses.value = false
             }
@@ -151,31 +157,47 @@ class CarDetailsViewModel(
     }
 
     fun checkTireRecommendation() {
+        Timber.tag("CarDetailsVM").d("checkTireRecommendation() called")
+
         if (isCheckingRecommendation) {
             Timber.tag("CarDetailsVM").d("Проверка резины уже выполняется, пропускаем")
             return
         }
+
+        val hasLocationPermission = checkLocationPermission()
+        Timber.tag("CarDetailsVM").d("hasLocationPermission: $hasLocationPermission")
+
+        if (!hasLocationPermission) {
+            Timber.tag("CarDetailsVM").d("Нет разрешения на геолокацию, пропускаем")
+            return
+        }
+
+        val currentTires = TokenManager.getCurrentTires(numberPlate)
+        Timber.tag("CarDetailsVM").d("currentTires: $currentTires")
+
+        if (currentTires.isNullOrBlank()) {
+            Timber.tag("CarDetailsVM").w("Тип резины не установлен -> пропускаем запрос")
+            return
+        }
+
         viewModelScope.launch {
-            val currentTires = TokenManager.getCurrentTires(numberPlate) ?: run {
-                Timber.tag("CarDetailsVM").w("Тип резины не установлен -> пропускаем запрос")
-                return@launch
-            }
-
-            val location = try {
-                getCurrentLocation()
-            } catch (e: Exception) {
-                Timber.tag("CarDetailsVM").e(e, "Ошибка получения геолокации")
-                null
-            }
-
-            if (location == null) {
-                Timber.tag("CarDetailsVM").w("Геолокация недоступна")
-                return@launch
-            }
-
+            isCheckingRecommendation = true
             try {
+                Timber.tag("CarDetailsVM").d("Пытаемся получить геолокацию...")
+                val location = try {
+                    getCurrentLocation()
+                } catch (e: Exception) {
+                    Timber.tag("CarDetailsVM").e(e, "Ошибка получения геолокации")
+                    null
+                }
+
+                if (location == null) {
+                    Timber.tag("CarDetailsVM").w("Геолокация недоступна")
+                    return@launch
+                }
+
                 Timber.tag("CarDetailsVM")
-                    .d("Запрос по резине: lat=${location.latitude}, lon=${location.longitude}, tires=$currentTires")
+                    .d("Отправляем запрос: lat=${location.latitude}, lon=${location.longitude}, tires=$currentTires")
 
                 val response = authApi.getTireRecommendation(
                     lat = location.latitude,
@@ -196,10 +218,10 @@ class CarDetailsViewModel(
                 } else {
                     val errorBody = response.errorBody()?.string()
                     Timber.tag("CarDetailsVM")
-                        .w("Ошибка сервера по резине: ${response.code()} - $errorBody")
+                        .w("Ошибка сервера: ${response.code()} - $errorBody")
                 }
-            } catch (e: Exception) {
-                Timber.tag("CarDetailsVM").e(e, "Ошибка запроса рекомендации по резине")
+            } finally {
+                isCheckingRecommendation = false
             }
         }
     }
@@ -208,21 +230,31 @@ class CarDetailsViewModel(
     private suspend fun getCurrentLocation(): Location? = suspendCancellableCoroutine { cont ->
         val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
 
-        fusedLocationClient.lastLocation
-            .addOnSuccessListener { location: Location? ->
-                if (location != null) {
-                    Timber.tag("CarDetailsVM")
-                        .d("Получена локация: ${location.latitude}, ${location.longitude}")
-                    cont.resume(location)
-                } else {
-                    Timber.tag("CarDetailsVM").w("Последняя локация null")
-                    cont.resume(null)
-                }
+        fusedLocationClient.getCurrentLocation(
+            com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY,
+            null
+        )
+            .addOnSuccessListener { location ->
+                cont.resume(location)
             }
             .addOnFailureListener { e ->
-                Timber.tag("CarDetailsVM").e(e, "Не удалось получить локацию")
                 cont.resumeWithException(e)
             }
+    }
+
+    private fun checkLocationPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED ||
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
     }
 
     private fun sendTireNotification(tire: TireResponse) {
@@ -303,6 +335,40 @@ class CarDetailsViewModel(
             } catch (e: Exception) {
                 onError("Сетевая ошибка: ${e.localizedMessage}")
                 Timber.tag("CarDetailsVM").e(e, "Ошибка обновления автомобиля")
+            }
+        }
+    }
+
+    fun loadCurrentMileageAndCalculateNextService(carId: Int) {
+        viewModelScope.launch {
+            try {
+                val mileageResponse = authApi.getMileage(carId, "all")
+                if (mileageResponse.isSuccessful) {
+                    val data = mileageResponse.body()
+                    val lastLog = data?.logs?.maxByOrNull { it.date }
+                    val currentMileageValue = lastLog?.mileage
+                    _currentMileage.value = currentMileageValue
+
+                    if (currentMileageValue != null) {
+                        val recommendationsResponse = authApi.getRecommendations(carId)
+                        if (recommendationsResponse.isSuccessful) {
+                            val recommendations = recommendationsResponse.body() ?: emptyList()
+
+                            val nextService = recommendations
+                                .filter { it.nextRecommendedMileage != null && it.nextRecommendedMileage!! > currentMileageValue }
+                                .minByOrNull { it.nextRecommendedMileage ?: Int.MAX_VALUE }
+
+                            if (nextService != null && nextService.nextRecommendedMileage != null) {
+                                val distance = nextService.nextRecommendedMileage!! - currentMileageValue
+                                _nextServiceDistance.value = distance
+                            } else {
+                                _nextServiceDistance.value = null
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Ошибка загрузки пробега и расчета ТО")
             }
         }
     }
