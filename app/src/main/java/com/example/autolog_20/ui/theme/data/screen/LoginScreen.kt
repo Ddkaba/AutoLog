@@ -129,7 +129,7 @@ fun LoginScreen(navController: NavController) {
                                 TokenManager.saveTokens(
                                     access = body.access,
                                     refresh = refreshCookie,
-                                    userId = body.user_id,
+                                    userId = body.userId,
                                     username = body.username
                                 )
 

@@ -35,6 +35,8 @@ import com.example.autolog_20.ui.theme.data.screen.RegisterScreen
 import com.example.autolog_20.ui.theme.data.screen.SettingsScreen
 import com.example.autolog_20.ui.theme.data.screen.StartupScreen
 import com.example.autolog_20.ui.theme.data.locale.SettingsManager
+import com.example.autolog_20.ui.theme.data.screen.MileageScreen
+import com.example.autolog_20.ui.theme.data.screen.ServicesScreen
 
 class MainActivity : ComponentActivity() {
 
@@ -147,6 +149,7 @@ class MainActivity : ComponentActivity() {
                             val numberPlate = backStackEntry.arguments?.getString("numberPlate") ?: ""
                             MaintenanceScreen(navController, numberPlate)
                         }
+
                         composable("tires/{numberPlate}") { /* TiresScreen */ }
 
                         composable("expenses/{numberPlate}") { backStackEntry ->
@@ -157,8 +160,29 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        composable("mileage/{numberPlate}") { /* MileageScreen */ }
-                        composable("services/{numberPlate}") { /* ServicesScreen */ }
+                        composable("mileage/{numberPlate}") { backStackEntry ->
+                            val numberPlate = backStackEntry.arguments?.getString("numberPlate") ?: ""
+                            MileageScreen(navController, numberPlate)
+                        }
+
+                        composable(
+                            route = "services/{numberPlate}/{lat}/{lon}",
+                            arguments = listOf(
+                                navArgument("numberPlate") { type = NavType.StringType },
+                                navArgument("lat") { type = NavType.FloatType },
+                                navArgument("lon") { type = NavType.FloatType }
+                            )
+                        ) { backStackEntry ->
+                            val numberPlate = backStackEntry.arguments?.getString("numberPlate") ?: ""
+                            val lat = backStackEntry.arguments?.getFloat("lat") ?: 0f
+                            val lon = backStackEntry.arguments?.getFloat("lon") ?: 0f
+
+                            ServicesScreen(
+                                navController = navController,
+                                currentLat = lat.toDouble(),
+                                currentLon = lon.toDouble()
+                            )
+                        }
 
                         composable("settings") {
                             SettingsScreen(navController = navController)

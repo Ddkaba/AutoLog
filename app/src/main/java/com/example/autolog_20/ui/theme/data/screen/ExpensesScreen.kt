@@ -8,6 +8,7 @@ import android.webkit.WebView
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -37,6 +38,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -45,6 +47,7 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -52,7 +55,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -64,7 +66,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -72,7 +73,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -120,8 +120,6 @@ import com.example.autolog_20.ui.theme.data.model.ExpensesUiState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
-import java.time.Instant
-import java.time.ZoneId
 import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -149,18 +147,36 @@ fun ExpensesScreen(
     val selectedPeriod by viewModel.selectedPeriod.collectAsStateWithLifecycle()
     val totalAllTime by viewModel.totalAllTime.collectAsStateWithLifecycle()
     val selectedCategories by viewModel.selectedCategories.collectAsStateWithLifecycle()
+    val customFrom by viewModel.customFrom.collectAsStateWithLifecycle()
+    val customTo by viewModel.customTo.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
     var showPeriodSheet by remember { mutableStateOf(false) }
     var showCategoriesBottomSheet by remember { mutableStateOf(false) }
     var showCategorySheet by remember { mutableStateOf(false) }
-    var showDatePicker by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     var selectedExpense by remember { mutableStateOf<ExpenseItem?>(null) }
     var receiptUrl by remember { mutableStateOf<String?>(null) }
-    val dateRangePickerState = rememberDateRangePickerState()
     var selectedExpenseForEdit by remember { mutableStateOf<ExpenseItem?>(null) }
+
+    val periodSubtitle = remember(selectedPeriod, customFrom, customTo) {
+        when (selectedPeriod) {
+            "week" -> "Неделя"
+            "month" -> "Месяц"
+            "year" -> "Год"
+            "custom" -> {
+                val from = customFrom
+                val to = customTo
+                if (from != null && to != null) {
+                    "${DateFormat.formatDateToDisplay(from)} — ${DateFormat.formatDateToDisplay(to)}"
+                } else {
+                    "Свой период"
+                }
+            }
+            else -> "За всё время"
+        }
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -186,6 +202,7 @@ fun ExpensesScreen(
                     CircularProgressIndicator()
                 }
             }
+
             is ExpensesUiState.Success -> {
                 Column(
                     modifier = Modifier
@@ -199,7 +216,8 @@ fun ExpensesScreen(
                         horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         InteractiveExpensePieChart(
-                            expenses = (uiState as? ExpensesUiState.Success)?.expenses ?: emptyList(),
+                            expenses = (uiState as? ExpensesUiState.Success)?.expenses
+                                ?: emptyList(),
                             modifier = Modifier.weight(1f),
                             onChartClick = {
                                 showCategoriesBottomSheet = true
@@ -215,12 +233,13 @@ fun ExpensesScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(
                         modifier = Modifier
-                            .fillMaxWidth().padding(horizontal = 10.dp),
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         FilterTile(
                             title = "Период",
-                            subtitle = getPeriodLabel(selectedPeriod),
+                            subtitle = periodSubtitle,
                             modifier = Modifier.weight(1f),
                             onClick = { showPeriodSheet = true }
                         )
@@ -355,97 +374,27 @@ fun ExpensesScreen(
     if (showPeriodSheet) {
         PeriodBottomSheet(
             selectedPeriod = selectedPeriod,
-            onQuickPeriodSelected = { period ->
+            customFrom = customFrom,
+            customTo = customTo,
+            onPeriodSelected = { period ->
                 viewModel.changePeriod(period)
                 showPeriodSheet = false
             },
-            onCustomPeriodClick = {
+            onCustomPeriodSelected = { from, to ->
+                viewModel.setCustomPeriod(
+                    LocalDate.parse(from),
+                    LocalDate.parse(to)
+                )
                 showPeriodSheet = false
-                showDatePicker = true
             },
             onDismiss = { showPeriodSheet = false }
         )
     }
 
-    if (showDatePicker) {
-        val fromMillis = dateRangePickerState.selectedStartDateMillis
-        val toMillis = dateRangePickerState.selectedEndDateMillis
-
-        val fromDate = fromMillis?.let {
-            Instant.ofEpochMilli(it)
-                .atZone(ZoneId.systemDefault())
-                .toLocalDate()
-        }
-
-        val toDate = toMillis?.let {
-            Instant.ofEpochMilli(it)
-                .atZone(ZoneId.systemDefault())
-                .toLocalDate()
-        }
-
-        ModalBottomSheet(
-            onDismissRequest = { showDatePicker = false }
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp)
-            ) {
-
-                DateRangePicker(
-                    state = dateRangePickerState,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    title = {
-                        Text("Выберите период")
-                    },
-                    headline = {
-                        Text(
-                            text = when {
-                                fromDate != null && toDate != null -> "$fromDate — $toDate"
-                                fromDate != null -> "$fromDate — ..."
-                                else -> "Начало — Конец"
-                            }
-                        )
-                    }
-                )
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    TextButton(onClick = { showDatePicker = false }) {
-                        Text("Отмена")
-                    }
-
-                    Button(
-                        enabled = fromDate != null && toDate != null,
-                        onClick = {
-                            viewModel.setCustomPeriod(fromDate!!, toDate!!)
-                            showDatePicker = false
-                        }
-                    ) {
-                        Text("Применить")
-                    }
-                }
-            }
-        }
-    }
 }
 
 
-private fun getPeriodLabel(period: String): String {
-    return when (period) {
-        "week" -> "Неделя"
-        "month" -> "Месяц"
-        "year" -> "Год"
-        "custom" -> "Свой период"
-        else -> "За всё время"
-    }
-}
+
 private fun Double.format(digits: Int) = "%.${digits}f".format(this)
 
 
@@ -547,7 +496,9 @@ fun SwipeToDeleteExpenseItem(
                 imageVector = Icons.Default.Delete,
                 contentDescription = "Удалить",
                 tint = MaterialTheme.colorScheme.onError,
-                modifier = Modifier.padding(end = 24.dp).size(32.dp)
+                modifier = Modifier
+                    .padding(end = 24.dp)
+                    .size(32.dp)
             )
         }
 
@@ -755,7 +706,8 @@ fun AddExpenseDialog(
     }
 
     val datePickerState = androidx.compose.material3.rememberDatePickerState(
-        initialSelectedDateMillis = currentDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        initialSelectedDateMillis = currentDate.atStartOfDay(java.time.ZoneId.systemDefault())
+            .toInstant().toEpochMilli()
     )
 
     val cameraLauncher = rememberLauncherForActivityResult(
@@ -779,7 +731,8 @@ fun AddExpenseDialog(
         if (isGranted) {
             openCamera(context, tempPhotoFile, cameraLauncher)
         } else {
-            Toast.makeText(context, "Для фото чека нужно разрешение на камеру", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Для фото чека нужно разрешение на камеру", Toast.LENGTH_SHORT)
+                .show()
             showPhotoSourceSheet = false
         }
     }
@@ -1118,15 +1071,15 @@ fun InteractiveExpensePieChart(
 
     val categoryColorMap = mapOf(
         "Техническое обслуживание" to Color(0xFFFF0000),
-        "Ремонт"                   to Color(0xFFFF8C00),
-        "Топливо"                  to Color(0xFFFFFF00),
-        "Страхование"              to Color(0xFF00FF00),
-        "Налоги и пошлины"         to Color(0xFF00FFFF),
-        "Мойка и уход"             to Color(0xFF0000CD),
-        "Парковка и хранение"      to Color(0xFF8A2BE2),
-        "Штрафы"                   to Color(0xFFFF1493),
-        "Запчасти и расходники"    to Color(0xFFF0B2AB),
-        "Прочие расходы"           to Color(0xFFF05340)
+        "Ремонт" to Color(0xFFFF8C00),
+        "Топливо" to Color(0xFFFFFF00),
+        "Страхование" to Color(0xFF00FF00),
+        "Налоги и пошлины" to Color(0xFF00FFFF),
+        "Мойка и уход" to Color(0xFF0000CD),
+        "Парковка и хранение" to Color(0xFF8A2BE2),
+        "Штрафы" to Color(0xFFFF1493),
+        "Запчасти и расходники" to Color(0xFFF0B2AB),
+        "Прочие расходы" to Color(0xFFF05340)
     )
 
     Canvas(
@@ -1196,15 +1149,15 @@ fun ExpenseCategoriesBottomSheet(
 
     val categoryColorMap = mapOf(
         "Техническое обслуживание" to Color(0xFFFF0000),
-        "Ремонт"                   to Color(0xFFFF8C00),
-        "Топливо"                  to Color(0xFFFFFF00),
-        "Страхование"              to Color(0xFF00FF00),
-        "Налоги и пошлины"         to Color(0xFF00FFFF),
-        "Мойка и уход"             to Color(0xFF0000CD),
-        "Парковка и хранение"      to Color(0xFF8A2BE2),
-        "Штрафы"                   to Color(0xFFFF1493),
-        "Запчасти и расходники"    to Color(0xFFF0B2AB),
-        "Прочие расходы"           to Color(0xFFF05340)
+        "Ремонт" to Color(0xFFFF8C00),
+        "Топливо" to Color(0xFFFFFF00),
+        "Страхование" to Color(0xFF00FF00),
+        "Налоги и пошлины" to Color(0xFF00FFFF),
+        "Мойка и уход" to Color(0xFF0000CD),
+        "Парковка и хранение" to Color(0xFF8A2BE2),
+        "Штрафы" to Color(0xFFFF1493),
+        "Запчасти и расходники" to Color(0xFFF0B2AB),
+        "Прочие расходы" to Color(0xFFF05340)
     )
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
@@ -1291,7 +1244,8 @@ private fun EmptyChartPlaceholder(modifier: Modifier = Modifier) {
 fun TotalAllTimeCard(totalAllTime: Double) {
     Card(
         modifier = Modifier
-            .fillMaxWidth().aspectRatio(1f),
+            .fillMaxWidth()
+            .aspectRatio(1f),
         colors = CardDefaults.cardColors(
             containerColor = TileExpenses
         ),
@@ -1317,7 +1271,7 @@ fun TotalAllTimeCard(totalAllTime: Double) {
                 horizontalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = totalAllTime.format(0)+" ₽",
+                    text = totalAllTime.format(0) + " ₽",
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = SurfaceDark
@@ -1364,97 +1318,227 @@ fun FilterTile(
 @Composable
 fun PeriodBottomSheet(
     selectedPeriod: String,
-    onQuickPeriodSelected: (String) -> Unit,
-    onCustomPeriodClick: () -> Unit,
+    customFrom: String? = null,
+    customTo: String? = null,
+    onPeriodSelected: (String) -> Unit,
+    onCustomPeriodSelected: (String, String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    var showCustomDatePicker by remember { mutableStateOf(false) }
+
+    // Функция форматирования даты в ДД.ММ.ГГ
+    fun formatDateToShort(dateStr: String): String {
+        return try {
+            val parts = dateStr.split("-")
+            if (parts.size == 3) {
+                "${parts[2]}.${parts[1]}.${parts[0].takeLast(2)}"
+            } else {
+                dateStr
+            }
+        } catch (e: Exception) {
+            dateStr
+        }
+    }
+
+    // Функция для отображения выбранного периода
+    fun getPeriodDisplayText(): String {
+        return when (selectedPeriod) {
+            "week" -> "Последняя неделя"
+            "month" -> "Последний месяц"
+            "year" -> "Последний год"
+            "custom" -> {
+                if (customFrom != null && customTo != null) {
+                    "${formatDateToShort(customFrom)} — ${formatDateToShort(customTo)}"
+                } else {
+                    "Свой период"
+                }
+            }
+            else -> "За всё время"
+        }
+    }
+
+    val periods = listOf(
+        "all" to "За всё время",
+        "year" to "Последний год",
+        "month" to "Последний месяц",
+        "week" to "Последняя неделя"
+    )
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Выберите период", style = MaterialTheme.typography.titleLarge)
-
-            Spacer(Modifier.height(24.dp))
-
-            val periods = listOf(
-                "all" to "За всё время",
-                "week" to "Последняя неделя",
-                "month" to "Последний месяц",
-                "year" to "Последний год"
+            Text(
+                text = "Выберите период",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(bottom = 24.dp)
             )
 
-            periods.forEach { (value, label) ->
-                ListItem(
-                    headlineContent = { Text(label) },
-                    leadingContent = {
-                        RadioButton(
-                            selected = selectedPeriod == value,
-                            onClick = { onQuickPeriodSelected(value) }
+            periods.forEach { (value, title) ->
+                val isSelected = selectedPeriod == value
+
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                        .clickable {
+                            onPeriodSelected(value)
+                            onDismiss()
+                        },
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (isSelected)
+                        MaterialTheme.colorScheme.primaryContainer
+                    else
+                        MaterialTheme.colorScheme.surfaceVariant,
+                    border = if (isSelected)
+                        BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+                    else null
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = if (isSelected)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
                         )
-                    },
-                    modifier = Modifier.clickable {
-                        onQuickPeriodSelected(value)
+
+                        if (isSelected) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = "Выбрано",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
-                )
+                }
             }
-            Spacer(Modifier.height(16.dp))
-            OutlinedButton(
-                onClick = onCustomPeriodClick,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Выбрать свой период")
-            }
-            Spacer(Modifier.height(32.dp))
-        }
-    }
-}
 
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    fun CategoryMultiBottomSheet(
-        selectedCategories: List<String>,
-        onCategoriesChanged: (List<String>) -> Unit,
-        onDismiss: () -> Unit
-    ) {
-        val allCategories = listOf(
-            "Техническое обслуживание", "Ремонт", "Топливо", "Страхование",
-            "Налоги и пошлины", "Мойка и уход", "Парковка и хранение",
-            "Штрафы", "Запчасти и расходники", "Прочие расходы"
-        )
+            Spacer(modifier = Modifier.height(16.dp))
 
-        ModalBottomSheet(onDismissRequest = onDismiss) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                Text("Выберите категории", style = MaterialTheme.typography.titleLarge)
-
-                Spacer(Modifier.height(16.dp))
-
-                LazyColumn {
-                    items(allCategories) { category ->
-                        val isSelected = selectedCategories.contains(category)
-                        ListItem(
-                            headlineContent = { Text(category) },
-                            leadingContent = {
-                                Checkbox(
-                                    checked = isSelected,
-                                    onCheckedChange = {
-                                        val newList = if (isSelected) {
-                                            selectedCategories - category
-                                        } else {
-                                            selectedCategories + category
-                                        }
-                                        onCategoriesChanged(newList)
-                                    }
-                                )
-                            }
+            if (selectedPeriod == "custom" && customFrom != null && customTo != null) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Свой период",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = getPeriodDisplayText(),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = "Выбрано",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
             }
+
+            OutlinedButton(
+                onClick = { showCustomDatePicker = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DateRange,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Выбрать свой период")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            TextButton(onClick = onDismiss) {
+                Text("Отмена")
+            }
         }
     }
+
+    if (showCustomDatePicker) {
+        CustomDateRangePicker(
+            onConfirm = { from, to ->
+                onCustomPeriodSelected(from, to)
+            },
+            onDismiss = { showCustomDatePicker = false }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CategoryMultiBottomSheet(
+    selectedCategories: List<String>,
+    onCategoriesChanged: (List<String>) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val allCategories = listOf(
+        "Техническое обслуживание", "Ремонт", "Топливо", "Страхование",
+        "Налоги и пошлины", "Мойка и уход", "Парковка и хранение",
+        "Штрафы", "Запчасти и расходники", "Прочие расходы"
+    )
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(modifier = Modifier.padding(24.dp)) {
+            Text("Выберите категории", style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.height(16.dp))
+            LazyColumn {
+                items(allCategories) { category ->
+                    val isSelected = selectedCategories.contains(category)
+                    ListItem(
+                        headlineContent = { Text(category) },
+                        leadingContent = {
+                            Checkbox(
+                                checked = isSelected,
+                                onCheckedChange = {
+                                    val newList = if (isSelected) {
+                                        selectedCategories - category
+                                    } else {
+                                        selectedCategories + category
+                                    }
+                                    onCategoriesChanged(newList)
+                                }
+                            )
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1471,32 +1555,14 @@ fun ExpenseDetailBottomSheet(
                 .padding(24.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Подробности расхода",
-                    style = MaterialTheme.typography.titleLarge
-                )
+            // Заголовок
+            Text(
+                text = "Детали расхода",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
 
-                IconButton(
-                    onClick = {
-                        onDismiss()
-                        onEdit(expense)
-                    }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Редактировать",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
+            // Информация о расходе
             DetailRow("Категория", expense.category?.name ?: "Прочие расходы")
 
             DetailRow("Сумма", "${expense.amount} ₽")
@@ -1518,8 +1584,31 @@ fun ExpenseDetailBottomSheet(
                     onClick = { onViewReceipt(expense.receiptPhoto!!) },
                     modifier = Modifier.fillMaxWidth()
                 ) {
+                    Icon(
+                        imageVector = Icons.Default.Receipt,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text("Посмотреть чек")
                 }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            OutlinedButton(
+                onClick = {
+                    onDismiss()
+                    onEdit(expense)
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Редактировать")
             }
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -1552,7 +1641,8 @@ fun EditExpenseBottomSheet(
     }
 
     val datePickerState = androidx.compose.material3.rememberDatePickerState(
-        initialSelectedDateMillis = currentDate.atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        initialSelectedDateMillis = currentDate.atStartOfDay(java.time.ZoneId.systemDefault())
+            .toInstant().toEpochMilli()
     )
 
     ModalBottomSheet(
@@ -1672,9 +1762,11 @@ fun EditExpenseBottomSheet(
                         val description = descriptionInput.ifBlank { null }
 
                         if (!hasError) {
-                            val finalAmount = if (amount != expense.amount.toDoubleOrNull()) amount else null
+                            val finalAmount =
+                                if (amount != expense.amount.toDoubleOrNull()) amount else null
                             val finalDate = if (date != expense.date) date else null
-                            val finalDescription = if (description != expense.description) description else null
+                            val finalDescription =
+                                if (description != expense.description) description else null
 
                             onSave(finalAmount, finalDate, finalDescription, null)
                         }

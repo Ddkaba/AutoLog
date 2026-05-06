@@ -1,6 +1,7 @@
 package com.example.autolog_20.ui.theme.data.model.response
 
 import com.example.autolog_20.ui.theme.data.model.CarInfo
+import com.example.autolog_20.ui.theme.data.model.MileageLog
 import com.example.autolog_20.ui.theme.data.model.PeriodInfo
 import com.google.gson.annotations.SerializedName
 
@@ -17,15 +18,3 @@ data class MileageResponse(
     val logs: List<MileageLog>
 )
 
-data class MileageLog(
-    @SerializedName("type")
-    val type: String,
-    @SerializedName("log_id")
-    val logId: Int,
-    @SerializedName("date")
-    val date: String,
-    @SerializedName("mileage")
-    val mileage: Int,
-    @SerializedName("route")
-    val route: String
-)

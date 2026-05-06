@@ -73,6 +73,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
 import android.Manifest
+import android.location.Location
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.AcUnit
 import androidx.compose.material.icons.filled.Autorenew
@@ -87,6 +88,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.rememberCoroutineScope
+import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
@@ -112,6 +114,7 @@ fun CarDetailsScreen(
     val isLoadingExpenses by viewModel.isLoadingExpenses.collectAsStateWithLifecycle()
     val nextServiceDistance by viewModel.nextServiceDistance.collectAsStateWithLifecycle()
     val currentMileage by viewModel.currentMileage.collectAsStateWithLifecycle()
+    val currentLocation by viewModel.currentLocation.collectAsStateWithLifecycle()
 
     var expandedTires by remember { mutableStateOf(false) }
     var expandedExpenses by remember { mutableStateOf(false) }
@@ -154,6 +157,12 @@ fun CarDetailsScreen(
     LaunchedEffect(hasLocationPermission, showTireDialog, carDetail) {
         if (hasLocationPermission && !showTireDialog && carDetail != null) {
             viewModel.checkTireRecommendation()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (hasLocationPermission) {
+            viewModel.fetchCurrentLocation()
         }
     }
 
@@ -413,8 +422,10 @@ fun CarDetailsScreen(
                 expanded = false,
                 onExpandChange = {},
                 onClick = {
-                    if (hasLocationPermission) {
-                        navController.navigate("services/${numberPlate}")
+                    if (hasLocationPermission && currentLocation != null) {
+                        navController.navigate(
+                            "services/${numberPlate}/${currentLocation!!.latitude}/${currentLocation!!.longitude}"
+                        )
                     }
                 },
                 isClickable = hasLocationPermission

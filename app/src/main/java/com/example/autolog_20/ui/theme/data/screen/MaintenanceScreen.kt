@@ -880,26 +880,14 @@ fun ServiceDetailBottomSheet(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Детали обслуживания",
-                    style = MaterialTheme.typography.titleLarge
-                )
+            // Заголовок
+            Text(
+                text = "Детали обслуживания",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(bottom = 24.dp)
+            )
 
-                IconButton(onClick = onEdit) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Редактировать",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
+            // Информация о ТО
             DetailRow("Тип", service.serviceType)
             Spacer(modifier = Modifier.height(12.dp))
             DetailRow("Дата", DateFormat.formatDateToDisplay(service.date))
@@ -915,6 +903,7 @@ fun ServiceDetailBottomSheet(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // Кнопка просмотра чека
             if (!service.receiptPhoto.isNullOrBlank()) {
                 Button(
                     onClick = { onViewReceipt(service.receiptPhoto!!) },
@@ -928,6 +917,20 @@ fun ServiceDetailBottomSheet(
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Посмотреть чек")
                 }
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            OutlinedButton(
+                onClick = onEdit,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Редактировать")
             }
 
             Spacer(modifier = Modifier.height(32.dp))

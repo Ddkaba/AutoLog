@@ -37,9 +37,13 @@ class ExpensesViewModel(
     private val _totalAllTime = MutableStateFlow(0.0)
     val totalAllTime: StateFlow<Double> = _totalAllTime.asStateFlow()
 
+    private val _customFrom = MutableStateFlow<String?>(null)
+    val customFrom: StateFlow<String?> = _customFrom.asStateFlow()
+
+    private val _customTo = MutableStateFlow<String?>(null)
+    val customTo: StateFlow<String?> = _customTo.asStateFlow()
+
     private var currentCarId: Int? = null
-    var customFrom: String? = null
-    var customTo: String? = null
 
     init {
         loadCarIdAndData()
@@ -60,7 +64,7 @@ class ExpensesViewModel(
                 }
             } catch (e: Exception) {
                 _uiState.value = ExpensesUiState.Error("Ошибка сети: ${e.localizedMessage}")
-                Log.e("ExpensesVM", "Ошибка загрузки car_id", e)
+                Timber.tag("ExpensesVM").e(e, "Ошибка загрузки car_id")
             }
         }
     }
@@ -70,11 +74,11 @@ class ExpensesViewModel(
             val response = authApi.getExpenses(carId = carId, period = "all")
             if (response.isSuccessful) {
                 response.body()?.let { data ->
-                    _totalAllTime.value = data.total_spent
+                    _totalAllTime.value = data.totalSpent
                 }
             }
         } catch (e: Exception) {
-            Log.e("ExpensesVM", "Ошибка загрузки общей суммы", e)
+            Timber.tag("ExpensesVM").e(e, "Ошибка загрузки общей суммы")
         }
     }
 
@@ -90,15 +94,15 @@ class ExpensesViewModel(
                 val response = authApi.getExpenses(
                     carId = id,
                     period = period,
-                    from = if (period == "custom") customFrom else null,
-                    to = if (period == "custom") customTo else null,
+                    from = if (period == "custom") _customFrom.value else null,
+                    to = if (period == "custom") _customTo.value else null,
                     category = _selectedCategories.value
                 )
 
                 if (response.isSuccessful) {
                     response.body()?.let { data ->
                         _uiState.value = ExpensesUiState.Success(
-                            totalSpent = data.total_spent,
+                            totalSpent = data.totalSpent,
                             expenses = data.expenses
                         )
                     }
@@ -107,7 +111,7 @@ class ExpensesViewModel(
                 }
             } catch (e: Exception) {
                 _uiState.value = ExpensesUiState.Error("Сетевая ошибка: ${e.localizedMessage}")
-                Log.e("ExpensesVM", "Ошибка загрузки расходов", e)
+                Timber.tag("ExpensesVM").e(e, "Ошибка загрузки расходов")
             }
         }
     }
@@ -115,21 +119,21 @@ class ExpensesViewModel(
     fun changePeriod(period: String) {
         _selectedPeriod.value = period
         if (period != "custom") {
-            customFrom = null
-            customTo = null
+            _customFrom.value = null
+            _customTo.value = null
         }
-        loadExpenses()
-    }
-
-    fun changeCategories(categories: List<String>) {
-        _selectedCategories.value = categories
         loadExpenses()
     }
 
     fun setCustomPeriod(from: LocalDate, to: LocalDate) {
         _selectedPeriod.value = "custom"
-        customFrom = from.toString()
-        customTo = to.toString()
+        _customFrom.value = from.toString()
+        _customTo.value = to.toString()
+        loadExpenses()
+    }
+
+    fun changeCategories(categories: List<String>) {
+        _selectedCategories.value = categories
         loadExpenses()
     }
 
@@ -204,7 +208,7 @@ class ExpensesViewModel(
                     loadExpenses()
                     loadAllTimeTotal(carId)
                     onSuccess()
-                    Log.d("ExpensesVM", "Расход успешно обновлен: ${expense.expenseId}")
+                    Timber.tag("ExpensesVM").d("Расход успешно обновлен: ${expense.expenseId}")
                 } else {
                     val errorMessage = when (response.code()) {
                         400 -> "Некорректные данные"
@@ -214,11 +218,11 @@ class ExpensesViewModel(
                         else -> "Ошибка обновления: ${response.code()}"
                     }
                     onError(errorMessage)
-                    Log.e("ExpensesVM", "Ошибка обновления: ${response.code()}")
+                    Timber.tag("ExpensesVM").e("Ошибка обновления: ${response.code()}")
                 }
             } catch (e: Exception) {
                 onError("Сетевая ошибка: ${e.localizedMessage}")
-                Log.e("ExpensesVM", "Ошибка обновления расхода", e)
+                Timber.tag("ExpensesVM").e(e, "Ошибка обновления расхода")
             }
         }
     }
@@ -277,5 +281,3 @@ class ExpensesViewModel(
         }
     }
 }
-
-

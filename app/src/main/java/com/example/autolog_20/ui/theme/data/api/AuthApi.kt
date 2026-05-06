@@ -1,6 +1,8 @@
 package com.example.autolog_20.ui.theme.data.api
 
 import com.example.autolog_20.ui.theme.data.model.ExpenseItem
+import com.example.autolog_20.ui.theme.data.model.MileageLog
+import com.example.autolog_20.ui.theme.data.model.RouteInfo
 import com.example.autolog_20.ui.theme.data.model.ServiceRecord
 import com.example.autolog_20.ui.theme.data.model.request.AddCarToUserRequest
 import com.example.autolog_20.ui.theme.data.model.request.AddMileageRequest
@@ -17,12 +19,15 @@ import com.example.autolog_20.ui.theme.data.model.request.RecommendationUpdateRe
 import com.example.autolog_20.ui.theme.data.model.response.LoginResponse
 import com.example.autolog_20.ui.theme.data.model.response.RecommendationResponse
 import com.example.autolog_20.ui.theme.data.model.request.RegisterRequest
+import com.example.autolog_20.ui.theme.data.model.request.RouteRequest
 import com.example.autolog_20.ui.theme.data.model.request.ServiceUpdateRequest
+import com.example.autolog_20.ui.theme.data.model.request.UpdateMileageRequest
 import com.example.autolog_20.ui.theme.data.model.response.AddCarToUserResponse
 import com.example.autolog_20.ui.theme.data.model.response.CarAddResponse
 import com.example.autolog_20.ui.theme.data.model.response.MileageResponse
 import com.example.autolog_20.ui.theme.data.model.response.RegisterResponse
 import com.example.autolog_20.ui.theme.data.model.response.ServiceHistoryResponse
+import com.example.autolog_20.ui.theme.data.model.response.ServicesResponse
 import com.example.autolog_20.ui.theme.data.model.response.TireResponse
 import com.example.autolog_20.ui.theme.data.model.response.VinInfoResponse
 import okhttp3.MultipartBody
@@ -93,6 +98,23 @@ interface AuthApi {
         @Query("period") period: String = "all"
     ): Response<MileageResponse>
 
+    @GET("api/cars/{carId}/mileage/")
+    suspend fun getMileageWithCustomPeriod(
+        @Path("carId") carId: Int,
+        @Query("period") period: String = "custom",
+        @Query("from") from: String,
+        @Query("to") to: String
+    ): Response<MileageResponse>
+
+    @GET("api/services/search/")
+    suspend fun searchServices(
+        @Query("lat") lat: Double,
+        @Query("lon") lon: Double,
+        @Query("query") query: String = "автосервис",
+        @Query("radius") radius: Int = 5000
+    ): Response<ServicesResponse>
+
+
     @POST("api/login/")
     suspend fun login(
         @Body request: LoginRequest
@@ -150,6 +172,12 @@ interface AuthApi {
         @Body request: AddMileageRequest
     ): Response<Unit>
 
+    @POST("api/services/route/")
+    suspend fun buildRoute(
+        @Body request: RouteRequest
+    ): Response<RouteInfo>
+
+
     @DELETE("api/cars/{carId}/")
     suspend fun deleteCar(
         @Path("carId") carId: Int
@@ -166,6 +194,20 @@ interface AuthApi {
         @Path("carId") carId: Int,
         @Path("recordId") recordId: Int
     ): Response<Unit>
+
+    @DELETE("api/cars/{carId}/mileage/{logId}/")
+    suspend fun deleteMileageRecord(
+        @Path("carId") carId: Int,
+        @Path("logId") logId: Int
+    ): Response<Unit>
+
+    @PATCH("api/cars/{carId}/mileage/{logId}/")
+    suspend fun updateMileageRecord(
+        @Path("carId") carId: Int,
+        @Path("logId") logId: Int,
+        @Body request: UpdateMileageRequest
+    ): Response<MileageLog>
+
     @PATCH("api/cars/{carId}/")
     suspend fun updateCar(
         @Path("carId") carId: Int,
@@ -194,6 +236,7 @@ interface AuthApi {
     ): Response<RecommendationResponse>
 
     companion object {
-        const val BASE_URL = "http://10.0.2.2:8000/"
+        //const val BASE_URL = "http://10.0.2.2:8000/"
+        const val BASE_URL = "http://192.168.0.100:8000/"
     }
 }

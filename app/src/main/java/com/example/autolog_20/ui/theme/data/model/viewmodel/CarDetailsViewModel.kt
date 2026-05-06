@@ -61,6 +61,9 @@ class CarDetailsViewModel(
     private val _currentMileage = MutableStateFlow<Int?>(null)
     val currentMileage: StateFlow<Int?> = _currentMileage.asStateFlow()
 
+    private val _currentLocation = MutableStateFlow<Location?>(null)
+    val currentLocation: StateFlow<Location?> = _currentLocation.asStateFlow()
+
     private var isCheckingRecommendation = false
 
     init {
@@ -128,7 +131,7 @@ class CarDetailsViewModel(
                     val data = response.body()
                     if (data != null) {
                         _monthlyExpenses.value = ExpensesData(
-                            totalSpent = data.total_spent,
+                            totalSpent = data.totalSpent,
                             categories = data.expenses.groupBy { it.category?.name ?: "Прочие" }
                                 .mapValues {
                                     it.value.sumOf { e ->
@@ -370,6 +373,14 @@ class CarDetailsViewModel(
             } catch (e: Exception) {
                 Timber.e(e, "Ошибка загрузки пробега и расчета ТО")
             }
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun fetchCurrentLocation() {
+        viewModelScope.launch {
+            val location = getCurrentLocation()
+            _currentLocation.value = location
         }
     }
 }
