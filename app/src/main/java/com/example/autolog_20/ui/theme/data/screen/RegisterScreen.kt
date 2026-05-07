@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -16,6 +17,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.autolog_20.R
 import com.example.autolog_20.ui.theme.data.api.RetrofitClient
 import com.example.autolog_20.ui.theme.data.register.RegisterUiState
 import com.example.autolog_20.ui.theme.data.register.RegisterViewModel
@@ -35,15 +37,23 @@ fun RegisterScreen(
     )
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
     val snackbarHostState = remember { SnackbarHostState() }
-    val coroutineScope = rememberCoroutineScope()
+
+    val accountCreatedText = stringResource(R.string.account_created)
+    val errorRegistrationText = stringResource(R.string.error_registration_failed)
+    val registerTitle = stringResource(R.string.register_title)
+    val usernameLabel = stringResource(R.string.username)
+    val emailLabel = stringResource(R.string.email)
+    val passwordLabel = stringResource(R.string.password)
+    val confirmPasswordLabel = stringResource(R.string.confirm_password)
+    val passwordHint = stringResource(R.string.password_hint)
+    val createAccountText = stringResource(R.string.create_account)
 
     LaunchedEffect(uiState) {
         when (uiState) {
             is RegisterUiState.Success -> {
                 snackbarHostState.showSnackbar(
-                    message = "Аккаунт создан. Перенаправление на вход…",
+                    message = accountCreatedText,
                     duration = SnackbarDuration.Short
                 )
                 delay(1800)
@@ -52,8 +62,9 @@ fun RegisterScreen(
                 }
             }
             is RegisterUiState.Error -> {
+                val errorMessage = (uiState as RegisterUiState.Error).message
                 snackbarHostState.showSnackbar(
-                    message = (uiState as RegisterUiState.Error).message,
+                    message = errorMessage,
                     duration = SnackbarDuration.Long
                 )
             }
@@ -84,24 +95,23 @@ fun RegisterScreen(
                 IconButton(onClick = { navController.popBackStack() }) {
                     Icon(
                         imageVector = Icons.Default.ArrowBack,
-                        contentDescription = "Назад",
+                        contentDescription = stringResource(R.string.back),
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
 
             Text(
-                text = "Регистрация",
+                text = registerTitle,
                 style = MaterialTheme.typography.headlineMedium
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // USERNAME
             OutlinedTextField(
                 value = viewModel.username,
                 onValueChange = viewModel::onUsernameChanged,
-                label = { Text("Имя пользователя") },
+                label = { Text(usernameLabel) },
                 modifier = Modifier.fillMaxWidth(),
                 isError = uiState is RegisterUiState.ValidationError &&
                         (uiState as RegisterUiState.ValidationError).usernameError != null,
@@ -116,11 +126,10 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // EMAIL
             OutlinedTextField(
                 value = viewModel.email,
                 onValueChange = viewModel::onEmailChanged,
-                label = { Text("Email") },
+                label = { Text(emailLabel) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 modifier = Modifier.fillMaxWidth(),
                 isError = uiState is RegisterUiState.ValidationError &&
@@ -136,11 +145,10 @@ fun RegisterScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // PASSWORD
             OutlinedTextField(
                 value = viewModel.password,
                 onValueChange = viewModel::onPasswordChanged,
-                label = { Text("Пароль") },
+                label = { Text(passwordLabel) },
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 modifier = Modifier.fillMaxWidth(),
@@ -152,18 +160,17 @@ fun RegisterScreen(
                             .passwordError
                             ?.let { Text(it) }
                     } else {
-                        Text("Минимум 8 символов, цифра и заглавная буква")
+                        Text(passwordHint)
                     }
                 }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // CONFIRM PASSWORD
             OutlinedTextField(
                 value = viewModel.passwordConfirm,
                 onValueChange = viewModel::onPasswordConfirmChanged,
-                label = { Text("Повторите пароль") },
+                label = { Text(confirmPasswordLabel) },
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 modifier = Modifier.fillMaxWidth(),
@@ -194,7 +201,7 @@ fun RegisterScreen(
                         strokeWidth = 2.dp
                     )
                 } else {
-                    Text("Создать аккаунт")
+                    Text(createAccountText)
                 }
             }
         }

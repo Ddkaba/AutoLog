@@ -51,6 +51,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.example.autolog_20.R
 import com.example.autolog_20.ui.theme.data.api.RetrofitClient
 import com.example.autolog_20.ui.theme.data.model.AddCarByVinUiState
 import com.example.autolog_20.ui.theme.data.model.DrivingSurvey
@@ -81,10 +83,10 @@ fun AddCarByVinScreen(navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Добавление авто") },
+                title = { stringResource(R.string.add_car_3) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, "Назад")
+                        Icon(Icons.Default.ArrowBack, stringResource(R.string.back))
                     }
                 }
             )
@@ -103,15 +105,15 @@ fun AddCarByVinScreen(navController: NavController) {
                 is AddCarByVinUiState.VinAlreadyExistsError,
                 is AddCarByVinUiState.Loading -> {
                     Column {
-                        Text("Введите VIN автомобиля", style = MaterialTheme.typography.titleLarge)
+                        Text(stringResource(R.string.input_vin_car), style = MaterialTheme.typography.titleLarge)
 
                         Spacer(Modifier.height(32.dp))
 
                         OutlinedTextField(
                             value = vinInput,
                             onValueChange = { vinInput = it.uppercase().filter { c -> c.isLetterOrDigit() } },
-                            label = { Text("VIN (17 символов)") },
-                            placeholder = { Text("WDB2110231A709926") },
+                            label = { stringResource(R.string.vin_17_symbols) },
+                            placeholder = { stringResource(R.string.vin_example) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
                             isError = state is AddCarByVinUiState.VinAlreadyExistsError || state is AddCarByVinUiState.Error
@@ -145,7 +147,7 @@ fun AddCarByVinScreen(navController: NavController) {
                                         Spacer(Modifier.height(8.dp))
 
                                         Text(
-                                            text = "Найден существующий автомобиль:",
+                                            text = stringResource(R.string.exist_car),
                                             style = MaterialTheme.typography.bodyMedium
                                         )
 

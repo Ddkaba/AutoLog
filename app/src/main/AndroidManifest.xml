@@ -22,6 +22,9 @@
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
         android:theme="@style/Theme.AutoLog_20">
+        <meta-data
+            android:name="DGIS_API_KEY"
+            android:value="0e4b18aa-6ff9-4171-9eca-6912c6f76f00" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

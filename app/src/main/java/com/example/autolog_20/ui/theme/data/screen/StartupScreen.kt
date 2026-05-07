@@ -18,9 +18,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import com.example.autolog_20.R
 import com.example.autolog_20.ui.theme.data.api.AuthApi
 import com.example.autolog_20.ui.theme.data.api.RetrofitClient
 import com.example.autolog_20.ui.theme.data.locale.TokenManager
@@ -33,6 +35,9 @@ fun StartupScreen(
     authApi: AuthApi = RetrofitClient.api
 ) {
     val context = LocalContext.current
+
+    val serverUnavailableText = stringResource(R.string.server_unavailable)
+    val noInternetText = stringResource(R.string.no_internet_connection)
 
     val connectivityObserver = remember {
         AndroidConnectivityObserver(context)
@@ -60,10 +65,10 @@ fun StartupScreen(
                     }
                 }
             } else {
-                errorMessage = "Сервер недоступен. Проверьте интернет или попробуйте позже."
+                errorMessage = serverUnavailableText
             }
         } else {
-            errorMessage = "Нет подключения к интернету"
+            errorMessage = noInternetText
         }
     }
 
@@ -84,7 +89,7 @@ fun StartupScreen(
                 CircularProgressIndicator(modifier = Modifier.size(64.dp))
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
-                    text = if (isOnline) "Загрузка..." else "Загрузка...",
+                    text = stringResource(R.string.loading),
                     style = MaterialTheme.typography.titleMedium
                 )
             }

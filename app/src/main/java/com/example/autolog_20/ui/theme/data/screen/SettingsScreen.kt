@@ -133,6 +133,7 @@ fun SettingsScreen(
                         onClick = {
                             selectedTheme = "dark"
                             SettingsManager.setTheme("dark")
+                            (context as? Activity)?.recreate()
                         },
                         modifier = Modifier.weight(1f)
                     )
@@ -145,6 +146,7 @@ fun SettingsScreen(
                         onClick = {
                             selectedTheme = "light"
                             SettingsManager.setTheme("light")
+                            (context as? Activity)?.recreate()
                         },
                         modifier = Modifier.weight(1f)
                     )

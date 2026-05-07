@@ -16,14 +16,23 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.autolog_20.R
 
 @Composable
 fun NoConnectionScreen(
     message: String,
     onRetry: () -> Unit
 ) {
+
+    val noConnectionTitle = stringResource(R.string.no_connection_title)
+    val recommendationsTitle = stringResource(R.string.recommendations_title)
+    val recommendationWifi = stringResource(R.string.recommendation_wifi)
+    val recommendationLater = stringResource(R.string.recommendation_later)
+    val retryButtonText = stringResource(R.string.retry_button)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -41,7 +50,7 @@ fun NoConnectionScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         Text(
-            text = "Нет подключения",
+            text = noConnectionTitle,
             style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center
         )
@@ -58,7 +67,7 @@ fun NoConnectionScreen(
         Spacer(modifier = Modifier.height(40.dp))
 
         Text(
-            text = "Рекомендации:\n• Проверьте Wi-Fi или мобильный интернет\n• Попробуйте позже",
+            text = "$recommendationsTitle \n $recommendationWifi \n $recommendationLater",
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center
         )
@@ -66,7 +75,7 @@ fun NoConnectionScreen(
         Spacer(modifier = Modifier.height(48.dp))
 
         Button(onClick = onRetry) {
-            Text("Повторить")
+            Text(retryButtonText)
         }
     }
 }

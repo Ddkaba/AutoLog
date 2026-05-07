@@ -383,4 +383,5 @@ class CarDetailsViewModel(
             _currentLocation.value = location
         }
     }
+
 }

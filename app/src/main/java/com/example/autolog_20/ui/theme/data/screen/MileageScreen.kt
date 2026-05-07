@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,8 +42,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DateRangePicker
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -78,13 +75,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -103,7 +98,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import kotlin.math.abs
 import kotlin.math.max
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -290,7 +284,6 @@ fun MileageScreen(
         }
     }
 
-    // Bottom Sheet для выбора периода
     if (showPeriodSheet) {
         PeriodSelectionBottomSheet(
             currentPeriod = uiState.selectedPeriod,
@@ -358,11 +351,6 @@ fun MileageInfoCard(
 ) {
     val sortedLogs = logs.sortedWith(compareBy<MileageLog> { it.date }.thenBy { it.logId })
     val currentMileage = sortedLogs.lastOrNull()?.mileage
-    val firstMileage = sortedLogs.firstOrNull()?.mileage
-    val totalDistance = if (currentMileage != null && firstMileage != null) {
-        currentMileage - firstMileage
-    } else null
-
     Card(
         modifier = modifier,
         colors = CardDefaults.cardColors(
@@ -435,7 +423,6 @@ fun MileageChart(logs: List<MileageLog>) {
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            // График
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -454,7 +441,6 @@ fun MileageChart(logs: List<MileageLog>) {
 
                     val gridColor = Color.Gray.copy(alpha = 0.3f)
 
-                    // Горизонтальные линии сетки (4 линии)
                     for (i in 0..4) {
                         val y = paddingTop + (chartHeight / 4) * i
                         drawLine(
@@ -465,7 +451,6 @@ fun MileageChart(logs: List<MileageLog>) {
                         )
                     }
 
-                    // Вертикальные линии сетки
                     if (sortedLogs.size >= 2) {
                         val xStep = chartWidth / (sortedLogs.size - 1)
                         for (i in 0 until sortedLogs.size) {
@@ -479,7 +464,6 @@ fun MileageChart(logs: List<MileageLog>) {
                         }
                     }
 
-                    // Линия графика
                     if (sortedLogs.size >= 2) {
                         val path = Path()
                         val xStep = chartWidth / (sortedLogs.size - 1)
@@ -503,14 +487,12 @@ fun MileageChart(logs: List<MileageLog>) {
                             style = Stroke(width = 3f, cap = StrokeCap.Round)
                         )
 
-                        // Точки на графике с подписями
                         sortedLogs.forEachIndexed { index, log ->
                             val x = paddingLeft + index * xStep
                             val normalizedMileage = (log.mileage - minMileage).toFloat() / range
                             val y = paddingTop + chartHeight * (1 - normalizedMileage)
                             val clampedY = y.coerceIn(paddingTop, height - paddingBottom)
 
-                            // Рисуем точку
                             drawCircle(
                                 color = primaryColor,
                                 radius = 7f,

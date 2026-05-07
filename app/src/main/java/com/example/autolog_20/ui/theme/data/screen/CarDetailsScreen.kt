@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.LocationOff
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.Button
@@ -50,7 +49,6 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -69,11 +67,7 @@ import com.example.autolog_20.ui.theme.data.model.response.CarDetailResponse
 import com.example.autolog_20.ui.theme.data.model.viewmodel.CarDetailsViewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
 import android.Manifest
-import android.location.Location
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.AcUnit
 import androidx.compose.material.icons.filled.Autorenew
@@ -88,7 +82,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.rememberCoroutineScope
-import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
@@ -390,7 +383,7 @@ fun CarDetailsScreen(
 
             FeatureTile(
                 title = "Пробег",
-                subtitle = if (!hasLocationPermission) "Нет доступа к геолокации" else "За месяц",
+                subtitle = if (!hasLocationPermission) "Нет доступа к геолокации" else "",
                 icon = rememberVectorPainter(Icons.Default.Speed),
                 color = TileMileage,
                 expanded = expandedMileage,
@@ -402,16 +395,14 @@ fun CarDetailsScreen(
                 },
                 isClickable = hasLocationPermission
             ) {
-                Text(
-                    text = "1 240 км",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Средний расход: 8.2 л/100 км",
-                    style = MaterialTheme.typography.bodySmall
-                )
+                if (currentMileage != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Последний зафиксированный пробег: ${currentMileage} км",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
             FeatureTile(
@@ -457,6 +448,7 @@ fun CarDetailsScreen(
         )
     }
 }
+
 
 @Composable
 fun TireTypeSelectionSheet(

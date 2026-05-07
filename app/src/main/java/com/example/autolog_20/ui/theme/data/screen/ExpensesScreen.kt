@@ -106,21 +106,24 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.autolog_20.ui.theme.BackgroundDark
-import com.example.autolog_20.ui.theme.PastelExpenseSubtitle
-import com.example.autolog_20.ui.theme.SurfaceDark
 import com.example.autolog_20.ui.theme.TileExpenses
 import com.example.autolog_20.ui.theme.DeleteColor
+import com.example.autolog_20.ui.theme.ExpenseAmountColor
+import com.example.autolog_20.ui.theme.FilterTileBackground
+import com.example.autolog_20.ui.theme.FilterTileTextTitle
+import com.example.autolog_20.ui.theme.FilterTileTextSubtitle
 import com.example.autolog_20.ui.theme.data.api.RetrofitClient
 import com.example.autolog_20.ui.theme.data.model.ExpenseItem
 import com.example.autolog_20.ui.theme.data.model.viewmodel.ExpensesViewModel
-import java.time.LocalDate
-import com.example.autolog_20.ui.theme.PastelExpenseBackground
+import com.example.autolog_20.ui.theme.TotalAllTimeText
+import com.example.autolog_20.ui.theme.categoryColorMap
 import com.example.autolog_20.ui.theme.data.model.DateFormat
 import com.example.autolog_20.ui.theme.data.model.ExpensesUiState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.io.File
 import kotlin.math.abs
+import java.io.File
+import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -572,7 +575,7 @@ fun ExpenseItemCard(
                 text = "${expense.amount} ₽",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = PastelExpenseBackground
+                color = ExpenseAmountColor
             )
         }
     }
@@ -1069,19 +1072,6 @@ fun InteractiveExpensePieChart(
         return
     }
 
-    val categoryColorMap = mapOf(
-        "Техническое обслуживание" to Color(0xFFFF0000),
-        "Ремонт" to Color(0xFFFF8C00),
-        "Топливо" to Color(0xFFFFFF00),
-        "Страхование" to Color(0xFF00FF00),
-        "Налоги и пошлины" to Color(0xFF00FFFF),
-        "Мойка и уход" to Color(0xFF0000CD),
-        "Парковка и хранение" to Color(0xFF8A2BE2),
-        "Штрафы" to Color(0xFFFF1493),
-        "Запчасти и расходники" to Color(0xFFF0B2AB),
-        "Прочие расходы" to Color(0xFFF05340)
-    )
-
     Canvas(
         modifier = modifier
             .aspectRatio(1f)
@@ -1146,19 +1136,6 @@ fun ExpenseCategoriesBottomSheet(
         .mapValues { it.value.sumOf { exp -> exp.amount.toDoubleOrNull() ?: 0.0 } }
 
     val total = categorySums.values.sum()
-
-    val categoryColorMap = mapOf(
-        "Техническое обслуживание" to Color(0xFFFF0000),
-        "Ремонт" to Color(0xFFFF8C00),
-        "Топливо" to Color(0xFFFFFF00),
-        "Страхование" to Color(0xFF00FF00),
-        "Налоги и пошлины" to Color(0xFF00FFFF),
-        "Мойка и уход" to Color(0xFF0000CD),
-        "Парковка и хранение" to Color(0xFF8A2BE2),
-        "Штрафы" to Color(0xFFFF1493),
-        "Запчасти и расходники" to Color(0xFFF0B2AB),
-        "Прочие расходы" to Color(0xFFF05340)
-    )
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
@@ -1274,7 +1251,7 @@ fun TotalAllTimeCard(totalAllTime: Double) {
                     text = totalAllTime.format(0) + " ₽",
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = SurfaceDark
+                    color = TotalAllTimeText
                 )
             }
         }
@@ -1290,30 +1267,31 @@ fun FilterTile(
 ) {
     Card(
         modifier = modifier.clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = PastelExpenseSubtitle),
+        colors = CardDefaults.cardColors(
+            containerColor = FilterTileBackground
+        ),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(10.dp)
+                .padding(12.dp)
         ) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = FilterTileTextTitle
             )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = FilterTileTextSubtitle,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
     }
 }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PeriodBottomSheet(
