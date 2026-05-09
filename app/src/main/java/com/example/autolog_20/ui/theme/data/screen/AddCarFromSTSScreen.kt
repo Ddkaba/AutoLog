@@ -184,36 +184,6 @@ fun AddCarFromSTSScreen(
 
                     Spacer(Modifier.height(16.dp))
 
-                    OutlinedTextField(
-                        value = yearInput,
-                        onValueChange = { yearInput = it.filter { c -> c.isDigit() }.take(4) },
-                        label = { Text("Год выпуска") },
-                        placeholder = { Text(stsData.year.toString()) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(Modifier.height(16.dp))
-
-                    OutlinedTextField(
-                        value = numberInput,
-                        onValueChange = {
-                            numberInput = it.uppercase()
-                            checkError = null
-                        },
-                        label = { Text("Номер автомобиля") },
-                        placeholder = { Text(stsData.numberPlate) },
-                        modifier = Modifier.fillMaxWidth(),
-                        isError = checkError != null,
-                        supportingText = {
-                            if (checkError != null) {
-                                Text(checkError!!, color = MaterialTheme.colorScheme.error)
-                            }
-                        }
-                    )
-
-                    Spacer(Modifier.height(32.dp))
-
                     Button(
                         onClick = {
                             val mileage = mileageInput.toIntOrNull()
@@ -233,10 +203,6 @@ fun AddCarFromSTSScreen(
                             } else {
                                 if (mileage == null || mileage <= 0) {
                                     Toast.makeText(context, "Введите корректный пробег", Toast.LENGTH_SHORT).show()
-                                } else if (year == null || year !in 1900..currentYear) {
-                                    Toast.makeText(context, "Введите корректный год", Toast.LENGTH_SHORT).show()
-                                } else if (numberInput.isBlank()) {
-                                    Toast.makeText(context, "Введите номер автомобиля", Toast.LENGTH_SHORT).show()
                                 }
                             }
                         },
@@ -405,7 +371,10 @@ fun AddCarFromSTSScreen(
                 AddCarFromSTSUiState.Success -> {
                     LaunchedEffect(Unit) {
                         delay(1500)
-                        navController.popBackStack()
+                        navController.navigate("main") {
+                            popUpTo(0) { inclusive = true }
+                            launchSingleTop = true
+                        }
                     }
 
                     Column(
@@ -413,9 +382,34 @@ fun AddCarFromSTSScreen(
                         verticalArrangement = Arrangement.Center,
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(80.dp))
+                        Icon(
+                            Icons.Default.CheckCircle,
+                            null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(80.dp)
+                        )
                         Spacer(Modifier.height(16.dp))
-                        Text("Автомобиль успешно добавлен!", style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            "Автомобиль успешно добавлен!",
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            "Перенаправление в гараж...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(32.dp))
+                        Button(
+                            onClick = {
+                                navController.navigate("main") {
+                                    popUpTo(0) { inclusive = true }
+                                    launchSingleTop = true
+                                }
+                            }
+                        ) {
+                            Text("Вернуться")
+                        }
                     }
                 }
             }

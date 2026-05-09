@@ -50,8 +50,9 @@ fun StartupScreen(
 
     var serverAvailable by remember { mutableStateOf<Boolean?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var retryTrigger by remember { mutableStateOf(0) }
 
-    LaunchedEffect(isOnline) {
+    LaunchedEffect(isOnline, retryTrigger) {
         if (isOnline) {
             serverAvailable = authApi.isServerReachable()
             if (serverAvailable == true) {
@@ -78,6 +79,7 @@ fun StartupScreen(
             onRetry = {
                 errorMessage = null
                 serverAvailable = null
+                retryTrigger++
             }
         )
     } else {
