@@ -20,4 +20,4 @@ data class SurveySummary(
     val number: String = "",
     val color: String = "",
     val maintenanceIntervals: Map<String, Int> = emptyMap()
-) : AddCarByVinUiState
+) : AddCarByVinUiState, AddCarFromSTSUiState

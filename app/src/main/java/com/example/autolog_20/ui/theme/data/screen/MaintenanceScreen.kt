@@ -555,7 +555,7 @@ fun MaintenanceScreen(
 }
 
 @Composable
-private fun DetailRow(label: String, value: String) {
+private fun DetailRowMaintenance(label: String, value: String) {
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -888,17 +888,17 @@ fun ServiceDetailBottomSheet(
             )
 
             // Информация о ТО
-            DetailRow("Тип", service.serviceType)
+            DetailRowMaintenance("Тип", service.serviceType)
             Spacer(modifier = Modifier.height(12.dp))
-            DetailRow("Дата", DateFormat.formatDateToDisplay(service.date))
+            DetailRowMaintenance("Дата", DateFormat.formatDateToDisplay(service.date))
             Spacer(modifier = Modifier.height(12.dp))
-            DetailRow("Пробег", "${service.mileage} км")
+            DetailRowMaintenance("Пробег", "${service.mileage} км")
             Spacer(modifier = Modifier.height(12.dp))
-            DetailRow("Стоимость", "${service.cost} ₽")
+            DetailRowMaintenance("Стоимость", "${service.cost} ₽")
 
             if (!service.notes.isNullOrBlank()) {
                 Spacer(modifier = Modifier.height(12.dp))
-                DetailRow("Примечания", service.notes)
+                DetailRowMaintenance("Примечания", service.notes)
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -977,20 +977,20 @@ fun RecommendationDetailBottomSheet(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            DetailRow("Тип", recommendation.serviceType)
+            DetailRowMaintenance("Тип", recommendation.serviceType)
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            DetailRow("Интервал", "${recommendation.recommendedMileage} км")
+            DetailRowMaintenance("Интервал", "${recommendation.recommendedMileage} км")
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            DetailRow("Рекомендуемый пробег", "${recommendation.nextRecommendedMileage} км")
+            DetailRowMaintenance("Рекомендуемый пробег", "${recommendation.nextRecommendedMileage} км")
 
             Spacer(modifier = Modifier.height(12.dp))
 
             if (recommendation.description.isNotBlank()) {
-                DetailRow("Описание", recommendation.description)
+                DetailRowMaintenance("Описание", recommendation.description)
             }
 
             Spacer(modifier = Modifier.height(32.dp))

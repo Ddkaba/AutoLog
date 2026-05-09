@@ -76,4 +76,5 @@
     <string name="recommendation_later">• Try again later</string>
     <string name="retry_button">Retry</string>
     <string name="check_internet">Check your internet connection</string>
+    <string name="further">Further</string>
 </resources>

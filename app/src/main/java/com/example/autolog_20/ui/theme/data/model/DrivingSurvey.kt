@@ -19,7 +19,7 @@ data class DrivingSurvey(
     val year: Int = 0,
     val number: String = "",
     val color: String = ""
-) : AddCarByVinUiState
+) : AddCarByVinUiState, AddCarFromSTSUiState
 
 
 

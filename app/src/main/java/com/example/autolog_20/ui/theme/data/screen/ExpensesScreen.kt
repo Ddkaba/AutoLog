@@ -1541,18 +1541,18 @@ fun ExpenseDetailBottomSheet(
             )
 
             // Информация о расходе
-            DetailRow("Категория", expense.category?.name ?: "Прочие расходы")
+            DetailRowExpenses("Категория", expense.category?.name ?: "Прочие расходы")
 
-            DetailRow("Сумма", "${expense.amount} ₽")
+            DetailRowExpenses("Сумма", "${expense.amount} ₽")
 
-            DetailRow("Дата", DateFormat.formatDateToDisplay(expense.date))
+            DetailRowExpenses("Дата", DateFormat.formatDateToDisplay(expense.date))
 
             if (expense.mileage != null) {
-                DetailRow("Пробег", "${expense.mileage} км")
+                DetailRowExpenses("Пробег", "${expense.mileage} км")
             }
 
             if (!expense.description.isNullOrBlank()) {
-                DetailRow("Описание", expense.description)
+                DetailRowExpenses("Описание", expense.description)
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -1826,7 +1826,7 @@ fun ReceiptWebViewDialog(
 }
 
 @Composable
-private fun DetailRow(label: String, value: String) {
+private fun DetailRowExpenses(label: String, value: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()

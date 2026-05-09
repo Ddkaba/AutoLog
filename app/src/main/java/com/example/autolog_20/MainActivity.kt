@@ -22,7 +22,6 @@ import com.example.autolog_20.ui.theme.AutoLogTheme
 import com.example.autolog_20.ui.theme.BackgroundDark
 import com.example.autolog_20.ui.theme.data.locale.LocaleManager
 import com.example.autolog_20.ui.theme.data.locale.TokenManager
-import com.example.autolog_20.ui.theme.data.screen.AddCarByScanDataScreen
 import com.example.autolog_20.ui.theme.data.screen.AddCarByScanStsScreen
 import com.example.autolog_20.ui.theme.data.screen.AddCarByVinScreen
 import com.example.autolog_20.ui.theme.data.screen.AddCarManualScreen
@@ -35,6 +34,9 @@ import com.example.autolog_20.ui.theme.data.screen.RegisterScreen
 import com.example.autolog_20.ui.theme.data.screen.SettingsScreen
 import com.example.autolog_20.ui.theme.data.screen.StartupScreen
 import com.example.autolog_20.ui.theme.data.locale.SettingsManager
+import com.example.autolog_20.ui.theme.data.model.STSRecognitionData
+import com.example.autolog_20.ui.theme.data.screen.AddCarByScanDataScreen
+import com.example.autolog_20.ui.theme.data.screen.AddCarFromSTSScreen
 import com.example.autolog_20.ui.theme.data.screen.MileageScreen
 import com.example.autolog_20.ui.theme.data.screen.ServicesScreen
 
@@ -75,7 +77,7 @@ class MainActivity : ComponentActivity() {
                         composable("add_car_scan_sts") { AddCarByScanStsScreen(navController) }
 
                         composable(
-                            route = "add_car_scan_data/{vin}/{brand}/{model}/{year}/{color}/{numberPlate}",
+                            route = "add_car_manual_with_data_confirm/{vin}/{brand}/{model}/{year}/{color}/{numberPlate}",
                             arguments = listOf(
                                 navArgument("vin") { type = NavType.StringType },
                                 navArgument("brand") { type = NavType.StringType },
@@ -104,7 +106,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable(
-                            route = "add_car_manual_with_data_confirm/{vin}/{brand}/{model}/{year}/{color}/{numberPlate}",
+                            route = "add_car_from_sts/{vin}/{brand}/{model}/{year}/{color}/{numberPlate}",
                             arguments = listOf(
                                 navArgument("vin") { type = NavType.StringType },
                                 navArgument("brand") { type = NavType.StringType },
@@ -121,14 +123,18 @@ class MainActivity : ComponentActivity() {
                             val color = backStackEntry.arguments?.getString("color") ?: ""
                             val numberPlate = backStackEntry.arguments?.getString("numberPlate") ?: ""
 
-                            AddCarByScanDataScreen(
-                                navController = navController,
+                            val stsData = STSRecognitionData(
                                 vin = vin,
                                 brand = brand,
                                 model = model,
                                 year = year,
                                 color = color,
                                 numberPlate = numberPlate
+                            )
+
+                            AddCarFromSTSScreen(
+                                navController = navController,
+                                stsData = stsData
                             )
                         }
 

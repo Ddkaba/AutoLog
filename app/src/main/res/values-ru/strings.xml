@@ -76,4 +76,5 @@
     <string name="recommendation_later">• Попробуйте позже</string>
     <string name="retry_button">Повторить</string>
     <string name="check_internet">Проверьте подключение к интернету</string>
+    <string name="further">Далее</string>
 </resources>

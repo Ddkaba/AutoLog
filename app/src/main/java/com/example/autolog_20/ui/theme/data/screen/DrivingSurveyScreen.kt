@@ -1,5 +1,6 @@
 package com.example.autolog_20.ui.theme.data.screen
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,9 +9,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -38,7 +43,7 @@ fun DrivingSurveyScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
@@ -47,7 +52,7 @@ fun DrivingSurveyScreen(
             textAlign = TextAlign.Center
         )
 
-        Spacer(Modifier.height(32.dp))
+        Spacer(Modifier.height(20.dp))
 
         when (currentQuestion) {
             1 -> QuestionCard(
@@ -206,7 +211,7 @@ fun DrivingSurveyScreen(
             )
         }
 
-        Spacer(Modifier.height(48.dp))
+        Spacer(Modifier.height(20.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -236,6 +241,51 @@ fun DrivingSurveyScreen(
                 enabled = true
             ) {
                 Text(if (currentQuestion < 12) "Далее" else "Завершить")
+            }
+        }
+    }
+}
+
+@Composable
+fun QuestionCard(question: String, options: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit) {
+    Column {
+        Text(
+            text = question,
+            style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
+        )
+        options.forEachIndexed { index, option ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp)
+                    .clickable { onSelect(index) },
+                colors = CardDefaults.cardColors(
+                    containerColor = if (index == selectedIndex)
+                        MaterialTheme.colorScheme.primaryContainer
+                    else
+                        MaterialTheme.colorScheme.surfaceVariant
+                ),
+                elevation = CardDefaults.cardElevation(2.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = index == selectedIndex,
+                        onClick = { onSelect(index) }
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = option,
+                        style = MaterialTheme.typography.bodyLarge)
+                }
             }
         }
     }

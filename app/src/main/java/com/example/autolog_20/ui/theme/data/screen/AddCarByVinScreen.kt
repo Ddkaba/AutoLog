@@ -107,13 +107,13 @@ fun AddCarByVinScreen(navController: NavController) {
                     Column {
                         Text(stringResource(R.string.input_vin_car), style = MaterialTheme.typography.titleLarge)
 
-                        Spacer(Modifier.height(32.dp))
+                        Spacer(Modifier.height(20.dp))
 
                         OutlinedTextField(
                             value = vinInput,
                             onValueChange = { vinInput = it.uppercase().filter { c -> c.isLetterOrDigit() } },
-                            label = { stringResource(R.string.vin_17_symbols) },
-                            placeholder = { stringResource(R.string.vin_example) },
+                            label = { Text(stringResource(R.string.vin_17_symbols)) },
+                            placeholder = { Text(stringResource(R.string.vin_example)) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
                             isError = state is AddCarByVinUiState.VinAlreadyExistsError || state is AddCarByVinUiState.Error
@@ -657,52 +657,7 @@ fun AddCarByVinScreen(navController: NavController) {
 }
 
 @Composable
-fun QuestionCard(question: String, options: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit) {
-    Column {
-        Text(
-            text = question,
-            style = MaterialTheme.typography.titleMedium,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 24.dp)
-        )
-        options.forEachIndexed { index, option ->
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 6.dp)
-                    .clickable { onSelect(index) },
-                colors = CardDefaults.cardColors(
-                    containerColor = if (index == selectedIndex)
-                        MaterialTheme.colorScheme.primaryContainer
-                    else
-                        MaterialTheme.colorScheme.surfaceVariant
-                ),
-                elevation = CardDefaults.cardElevation(2.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = index == selectedIndex,
-                        onClick = { onSelect(index) }
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = option,
-                        style = MaterialTheme.typography.bodyLarge)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun DetailRow(label: String, value: String) {
+fun DetailRow(label: String, value: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()

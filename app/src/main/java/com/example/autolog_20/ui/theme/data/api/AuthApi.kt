@@ -26,6 +26,7 @@ import com.example.autolog_20.ui.theme.data.model.response.AddCarToUserResponse
 import com.example.autolog_20.ui.theme.data.model.response.CarAddResponse
 import com.example.autolog_20.ui.theme.data.model.response.MileageResponse
 import com.example.autolog_20.ui.theme.data.model.response.RegisterResponse
+import com.example.autolog_20.ui.theme.data.model.response.STSRecognitionResponse
 import com.example.autolog_20.ui.theme.data.model.response.ServiceHistoryResponse
 import com.example.autolog_20.ui.theme.data.model.response.ServicesResponse
 import com.example.autolog_20.ui.theme.data.model.response.TireResponse
@@ -177,6 +178,11 @@ interface AuthApi {
         @Body request: RouteRequest
     ): Response<RouteInfo>
 
+    @Multipart
+    @POST("api/sts/recognize/")
+    suspend fun recognizeSTS(
+        @Part photo: MultipartBody.Part
+    ): Response<STSRecognitionResponse>
 
     @DELETE("api/cars/{carId}/")
     suspend fun deleteCar(
