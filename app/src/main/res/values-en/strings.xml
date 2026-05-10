@@ -77,4 +77,5 @@
     <string name="retry_button">Retry</string>
     <string name="check_internet">Check your internet connection</string>
     <string name="further">Further</string>
+    <string name="gps_mileage_description">Automatically records car trips</string>
 </resources>

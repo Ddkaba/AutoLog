@@ -8,7 +8,7 @@ object SettingsManager {
     private const val PREFS_NAME = "settings_prefs"
     private const val KEY_LANGUAGE = "language"
     private const val KEY_THEME = "theme"
-    private const val KEY_GPS_MILEAGE = "gps_mileage"
+    private const val KEY_GPS_MILEAGE_ENABLED = "gps_mileage_enabled"
 
     private const val KEY_GPS_TRACKING_ENABLED = "gps_tracking_enabled"
     private const val KEY_SHOW_ASSIGN_TRIPS = "show_assign_trips"
@@ -37,10 +37,10 @@ object SettingsManager {
         prefs.edit { putString(KEY_THEME, theme) }
     }
 
-    fun isGpsMileageEnabled(): Boolean = prefs.getBoolean(KEY_GPS_MILEAGE, false)
+    fun isGpsMileageEnabled(): Boolean = prefs.getBoolean(KEY_GPS_MILEAGE_ENABLED, false)
 
     fun setGpsMileageEnabled(enabled: Boolean) {
-        prefs.edit { putBoolean(KEY_GPS_MILEAGE, enabled) }
+        prefs.edit { putBoolean(KEY_GPS_MILEAGE_ENABLED, enabled) }
     }
 
     fun isGpsTrackingEnabled(): Boolean = prefs.getBoolean(KEY_GPS_TRACKING_ENABLED, false)

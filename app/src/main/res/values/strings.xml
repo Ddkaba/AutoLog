@@ -76,4 +76,5 @@
     <string name="retry_button">Повторить</string>
     <string name="check_internet">Проверьте подключение к интернету</string>
     <string name="further">Далее</string>
+    <string name="gps_mileage_description">Автоматически записывает поездки на автомобиле</string>
 </resources>

@@ -1,7 +1,9 @@
 package com.example.autolog_20.ui.theme.data.screen
 
+import android.Manifest
 import android.app.Activity
-import android.content.Intent
+import android.content.pm.PackageManager
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -19,8 +22,11 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Brightness2
 import androidx.compose.material.icons.filled.Brightness5
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,10 +51,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import com.example.autolog_20.R
 import com.example.autolog_20.ui.theme.data.locale.SettingsManager
-import com.example.autolog_20.ui.theme.data.tracking.TrackingService
+import com.example.autolog_20.ui.theme.data.tracking.SimpleTrackingService
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,7 +65,9 @@ fun SettingsScreen(
     val context = LocalContext.current
     var selectedLanguage by remember { mutableStateOf(SettingsManager.getLanguage()) }
     var selectedTheme by remember { mutableStateOf(SettingsManager.getTheme()) }
-    var isGpsTrackingEnabled by remember { mutableStateOf(SettingsManager.isGpsTrackingEnabled()) }
+    var isGpsEnabled by remember { mutableStateOf(SettingsManager.isGpsMileageEnabled()) }
+
+    var isTracking by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -156,41 +165,68 @@ fun SettingsScreen(
 
             SettingsCard(
                 title = stringResource(R.string.gps_work),
-                icon = Icons.Default.Speed
+                icon = Icons.Default.LocationOn
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
+                Column {
+                    Text(
+                        text = stringResource(R.string.gps_mileage_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Text(
-                            text = if (isGpsTrackingEnabled) stringResource(R.string.on) else stringResource(R.string.off),
+                            text = if (isGpsEnabled) stringResource(R.string.on) else stringResource(R.string.off),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = if (isGpsTrackingEnabled)
+                            color = if (isGpsEnabled)
                                 MaterialTheme.colorScheme.primary
                             else
                                 MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Text(
-                            text = "Автоматически записывать поездки",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
 
-                    Switch(
-                        checked = isGpsTrackingEnabled,
-                        onCheckedChange = {
-                            isGpsTrackingEnabled = it
-                            SettingsManager.setGpsTrackingEnabled(it)
-                            if (it) {
-                                context.startService(Intent(context, TrackingService::class.java))
-                            } else {
-                                context.stopService(Intent(context, TrackingService::class.java))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = {
+                                    Toast.makeText(
+                                        context,
+                                        "Автоматически отслеживает поездки на авто. " +
+                                                "Начинается при скорости >20 км/ч, " +
+                                                "заканчивается через 5 минут остановки.",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.HelpOutline,
+                                    contentDescription = stringResource(R.string.info),
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
+
+                            Switch(
+                                checked = isGpsEnabled,
+                                onCheckedChange = { enabled ->
+                                    isGpsEnabled = enabled
+                                    SettingsManager.setGpsMileageEnabled(enabled)
+
+                                    if (enabled) {
+                                        SimpleTrackingService.start(context)
+                                        Toast.makeText(context, "GPS трекер запущен", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        SimpleTrackingService.stop(context)
+                                        Toast.makeText(context, "GPS трекер остановлен", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            )
                         }
-                    )
+                    }
                 }
             }
         }

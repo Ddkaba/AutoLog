@@ -11,7 +11,6 @@
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
-
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" android:minSdkVersion="33" />
 
     <application
@@ -28,6 +27,11 @@
         <meta-data
             android:name="DGIS_API_KEY"
             android:value="0e4b18aa-6ff9-4171-9eca-6912c6f76f00" />
+        <service
+            android:name=".ui.theme.data.tracking.SimpleTrackingService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="location" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -48,11 +52,6 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths" />
         </provider>
-        <service
-            android:name=".ui.theme.data.tracking.TrackingService"
-            android:enabled="true"
-            android:exported="false"
-            android:foregroundServiceType="location" />
 
     </application>
 

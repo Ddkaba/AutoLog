@@ -1,5 +1,6 @@
 package com.example.autolog_20
 
+import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
@@ -42,6 +43,7 @@ import com.example.autolog_20.ui.theme.data.screen.AddCarFromSTSScreen
 import com.example.autolog_20.ui.theme.data.screen.AssignTripsScreen
 import com.example.autolog_20.ui.theme.data.screen.MileageScreen
 import com.example.autolog_20.ui.theme.data.screen.ServicesScreen
+import com.example.autolog_20.ui.theme.data.tracking.SimpleTrackingService
 
 class MainActivity : ComponentActivity() {
 
@@ -56,6 +58,10 @@ class MainActivity : ComponentActivity() {
         AutoLogApplication.currentActivity = this
         createNotificationChannel()
         TokenManager.init(this)
+
+        if (SettingsManager.isGpsMileageEnabled()) {
+            SimpleTrackingService.start(this)
+        }
 
         setContent {
             AutoLogTheme {
@@ -228,4 +234,23 @@ class MainActivity : ComponentActivity() {
             notificationManager.createNotificationChannel(channel)
         }
     }
+
+
+    private fun requestLocationPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            requestPermissions(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_BACKGROUND_LOCATION
+                ),
+                1001
+            )
+        } else {
+            requestPermissions(
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+                1001
+            )
+        }
+    }
+
 }

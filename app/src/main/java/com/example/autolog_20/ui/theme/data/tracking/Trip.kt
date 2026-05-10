@@ -1,4 +1,4 @@
-package com.example.autolog_20.ui.theme.data.model
+package com.example.autolog_20.ui.theme.data.tracking
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
