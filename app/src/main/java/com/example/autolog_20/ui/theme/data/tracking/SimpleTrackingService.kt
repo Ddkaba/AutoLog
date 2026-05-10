@@ -12,6 +12,7 @@ import android.location.Location
 import android.os.Build
 import android.os.IBinder
 import android.os.Looper
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -53,7 +54,7 @@ class SimpleTrackingService : Service() {
         private const val NOTIFICATION_ID = 100
         private const val UPDATE_INTERVAL = 15000L // 15 секунд
 
-        // Параметры для определения поездки
+        private var isLocationUpdatesStarted = false
         private const val MIN_SPEED_FOR_TRIP = 20.0 // 20 км/ч - начало поездки
         private const val STATIONARY_TIMEOUT = 300000L // 5 минут для остановки
         private const val STATIONARY_RADIUS = 250.0 // 250 метров радиус для определения остановки
@@ -78,6 +79,20 @@ class SimpleTrackingService : Service() {
         createNotificationChannel()
         setupLocationClient()
     }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == "FINISH_TRIP_NOW") {
+            if (isTripInProgress && tripPoints.isNotEmpty()) {
+                val lastPoint = tripPoints.last()
+                finishTrip(lastPoint)
+            }
+            return START_STICKY
+        }
+
+        startLocationUpdates()
+        return START_STICKY
+    }
+
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -119,13 +134,15 @@ class SimpleTrackingService : Service() {
         val speedKmh = location.speed * 3.6
         val isMovingBySpeed = speedKmh >= MIN_SPEED_FOR_TRIP
 
-        android.util.Log.d("SimpleTracking", """
+        android.util.Log.d(
+            "SimpleTracking", """
             📍 Обновление:
             Скорость: ${String.format("%.1f", speedKmh)} км/ч
             Порог: $MIN_SPEED_FOR_TRIP км/ч
             Движение: ${if (isMovingBySpeed) "ДА" else "НЕТ"}
             Поездка в процессе: $isTripInProgress
-        """.trimIndent())
+        """.trimIndent()
+        )
 
         if (isMovingBySpeed) {
             // Движемся достаточно быстро - АВТОМОБИЛЬ
@@ -159,12 +176,14 @@ class SimpleTrackingService : Service() {
         lastMovingLocation = location
         stationaryCheckStartTime = 0
 
-        android.util.Log.d("SimpleTracking", """
+        android.util.Log.d(
+            "SimpleTracking", """
             🚗🚗🚗 НАЧАЛО ПОЕЗДКИ! 🚗🚗🚗
             Скорость: ${location.speed * 3.6} км/ч
             Время: ${SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())}
             Старт: ${location.latitude}, ${location.longitude}
-        """.trimIndent())
+        """.trimIndent()
+        )
     }
 
     private fun continueTrip(location: Location) {
@@ -176,7 +195,15 @@ class SimpleTrackingService : Service() {
                 val distance = calculateDistance(lat, lon, location.latitude, location.longitude)
                 if (distance > 5.0) {
                     totalDistance += distance
-                    android.util.Log.d("SimpleTracking", "📏 +${String.format("%.1f", distance)} м | Всего: ${String.format("%.2f", totalDistance / 1000)} км | Точек: ${tripPoints.size}")
+                    android.util.Log.d(
+                        "SimpleTracking",
+                        "📏 +${String.format("%.1f", distance)} м | Всего: ${
+                            String.format(
+                                "%.2f",
+                                totalDistance / 1000
+                            )
+                        } км | Точек: ${tripPoints.size}"
+                    )
                 }
             }
         }
@@ -202,13 +229,15 @@ class SimpleTrackingService : Service() {
 
         val stationaryDuration = System.currentTimeMillis() - stationaryCheckStartTime
 
-        android.util.Log.d("SimpleTracking", """
+        android.util.Log.d(
+            "SimpleTracking", """
             ⏸️ Проверка остановки:
             Расстояние от последнего движения: ${String.format("%.1f", distanceFromLastMove)} м
             Лимит радиуса: $STATIONARY_RADIUS м
             Время остановки: ${stationaryDuration / 1000} сек
             Требуется: ${STATIONARY_TIMEOUT / 1000} сек
-        """.trimIndent())
+        """.trimIndent()
+        )
 
         if (distanceFromLastMove <= STATIONARY_RADIUS) {
             // В пределах радиуса - считаем что стоим
@@ -216,7 +245,10 @@ class SimpleTrackingService : Service() {
                 stationaryCheckStartTime = System.currentTimeMillis()
             } else if (stationaryDuration >= STATIONARY_TIMEOUT) {
                 // Прошло 5 минут без значительного движения
-                android.util.Log.d("SimpleTracking", "✅ Условия остановки выполнены: ${STATIONARY_TIMEOUT/1000} минут в радиусе ${STATIONARY_RADIUS}м")
+                android.util.Log.d(
+                    "SimpleTracking",
+                    "✅ Условия остановки выполнены: ${STATIONARY_TIMEOUT / 1000} минут в радиусе ${STATIONARY_RADIUS}м"
+                )
                 finishTrip(currentLocation)
             }
         } else {
@@ -235,7 +267,8 @@ class SimpleTrackingService : Service() {
         val avgSpeed = if (duration > 0) (totalDistance / duration) * 3.6 else 0.0
         val maxSpeed = tripPoints.maxOfOrNull { it.speed * 3.6 } ?: 0.0
 
-        android.util.Log.d("SimpleTracking", """
+        android.util.Log.d(
+            "SimpleTracking", """
             🏁🏁🏁 ЗАВЕРШЕНИЕ ПОЕЗДКИ! 🏁🏁🏁
             =================================
             📊 СТАТИСТИКА:
@@ -245,7 +278,8 @@ class SimpleTrackingService : Service() {
             Максимальная скорость: ${String.format("%.1f", maxSpeed)} км/ч
             Точек маршрута: ${tripPoints.size}
             =================================
-        """.trimIndent())
+        """.trimIndent()
+        )
 
         // Сохраняем в базу данных
         saveTripToDatabase(endLocation, duration, avgSpeed, maxSpeed)
@@ -254,7 +288,12 @@ class SimpleTrackingService : Service() {
         stationaryCheckStartTime = 0
     }
 
-    private fun saveTripToDatabase(endLocation: Location, duration: Long, avgSpeed: Double, maxSpeed: Double) {
+    private fun saveTripToDatabase(
+        endLocation: Location,
+        duration: Long,
+        avgSpeed: Double,
+        maxSpeed: Double
+    ) {
         serviceScope.launch {
             try {
                 val db = TripDatabase.getDatabase(applicationContext)
@@ -277,9 +316,7 @@ class SimpleTrackingService : Service() {
                 )
 
                 val tripId = db.tripDao().insertTrip(trip)
-                android.util.Log.d("SimpleTracking", "✅ Поездка сохранена! ID: $tripId")
 
-                // Сохраняем GPS точки маршрута
                 var pointsSaved = 0
                 tripPoints.forEach { point ->
                     val gpsPoint = GpsPoint(
@@ -294,11 +331,8 @@ class SimpleTrackingService : Service() {
                     db.gpsPointDao().insertPoint(gpsPoint)
                     pointsSaved++
                 }
-
-                android.util.Log.d("SimpleTracking", "✅ Сохранено $pointsSaved GPS точек")
-
             } catch (e: Exception) {
-                android.util.Log.e("SimpleTracking", "❌ Ошибка сохранения: ${e.message}")
+                Log.e("SimpleTracking", "Ошибка сохранения: ${e.message}")
             }
         }
     }
@@ -321,29 +355,24 @@ class SimpleTrackingService : Service() {
 
         val notificationText = if (isActiveTrip) {
             """
-            🚗 ПОЕЗДКА В ПРОГРЕССЕ
-            
-            Время: $timeString
-            Скорость: ${String.format("%.1f", speedKmh)} км/ч
-            
-            📊 Статистика:
-            Пройдено: ${String.format("%.2f", totalDistance / 1000)} км
-            Время: ${(System.currentTimeMillis() - tripStartTime) / 60000} мин
-            """.trimIndent()
+        🚗 ПОЕЗДКА В ПРОГРЕССЕ
+        Скорость: ${String.format("%.1f", speedKmh)} км/ч
+        📊 Статистика:
+        Пройдено: ${String.format("%.2f", totalDistance / 1000)} км
+        """.trimIndent()
         } else {
             """
-            📍 ОЖИДАНИЕ ДВИЖЕНИЯ
-            
-            Время: $timeString
-            Для начала поездки: скорость > $MIN_SPEED_FOR_TRIP км/ч
-            Для остановки: 5 минут в радиусе 250 м
-            """.trimIndent()
+        📍 ОЖИДАНИЕ ДВИЖЕНИЯ
+        
+        Время: $timeString
+        Для начала поездки необходимо: скорость > 20 км/ч
+        """.trimIndent()
         }
 
         val shortText = if (isActiveTrip) {
             "🚗 ${String.format("%.1f", speedKmh)} км/ч | ${String.format("%.2f", totalDistance / 1000)} км"
         } else {
-            "📍 Ожидание скорости >$MIN_SPEED_FOR_TRIP км/ч"
+            "📍 Ожидание скорости >20 км/ч"
         }
 
         val intent = Intent(this, MainActivity::class.java)
@@ -356,7 +385,20 @@ class SimpleTrackingService : Service() {
             }
         )
 
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+        // Создаем Intent для кнопки "Завершить"
+        val finishIntent = Intent(this, TrackingActionReceiver::class.java)
+        finishIntent.action = "FINISH_TRIP"
+        val finishPendingIntent = PendingIntent.getBroadcast(
+            this, 1, finishIntent,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+        )
+
+        // Строим уведомление с кнопкой сразу
+        val notificationBuilder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(if (isActiveTrip) "🚗 Поездка" else "📍 Отслеживание")
             .setContentText(shortText)
             .setStyle(NotificationCompat.BigTextStyle().bigText(notificationText))
@@ -364,11 +406,46 @@ class SimpleTrackingService : Service() {
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setOngoing(true)
             .setContentIntent(pendingIntent)
-            .build()
+
+        // Добавляем кнопку только если поездка активна
+        if (isActiveTrip) {
+            notificationBuilder.addAction(
+                android.R.drawable.ic_menu_close_clear_cancel,
+                "Завершить",
+                finishPendingIntent
+            )
+        }
+
+        val notification = notificationBuilder.build()
 
         val notificationManagerCompat = NotificationManagerCompat.from(this)
         if (notificationManagerCompat.areNotificationsEnabled()) {
-            notificationManagerCompat.notify(NOTIFICATION_ID, notification)
+            if (!isLocationUpdatesStarted) {
+                startForeground(NOTIFICATION_ID, notification)
+                isLocationUpdatesStarted = true
+            } else {
+                notificationManagerCompat.notify(NOTIFICATION_ID, notification)
+            }
+        }
+    }
+
+    private fun startLocationUpdates() {
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            startForegroundWithDefaultNotification()
+            fusedLocationClient.requestLocationUpdates(
+                locationRequest,
+                locationCallback,
+                Looper.getMainLooper()
+            )
+            Log.d("SimpleTracking", "GPS трекер запущен")
+            Log.d("SimpleTracking", "Настройки: >$MIN_SPEED_FOR_TRIP км/ч для начала, ${STATIONARY_TIMEOUT/1000} мин/250м для остановки")
+        } else {
+            Log.d("SimpleTracking", "Нет разрешения на локацию")
+            stopSelf()
         }
     }
 
@@ -384,7 +461,7 @@ class SimpleTrackingService : Service() {
         )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("📍 Отслеживание геолокации")
+            .setContentTitle("Отслеживание геолокации")
             .setContentText("Ожидание скорости >$MIN_SPEED_FOR_TRIP км/ч")
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -393,41 +470,6 @@ class SimpleTrackingService : Service() {
             .build()
 
         startForeground(NOTIFICATION_ID, notification)
-    }
-
-    private fun startLocationUpdates() {
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            startForegroundWithDefaultNotification()
-            fusedLocationClient.requestLocationUpdates(
-                locationRequest,
-                locationCallback,
-                Looper.getMainLooper()
-            )
-            android.util.Log.d("SimpleTracking", "✅ GPS трекер запущен")
-            android.util.Log.d("SimpleTracking", "📋 Настройки: >$MIN_SPEED_FOR_TRIP км/ч для начала, ${STATIONARY_TIMEOUT/1000} мин/250м для остановки")
-        } else {
-            android.util.Log.d("SimpleTracking", "❌ Нет разрешения на локацию")
-            stopSelf()
-        }
-    }
-
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        android.util.Log.d("SimpleTracking", "▶️ Сервис запущен")
-        startLocationUpdates()
-        return START_STICKY
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        android.util.Log.d("SimpleTracking", "🔴 Сервис остановлен")
-        if (::fusedLocationClient.isInitialized) {
-            fusedLocationClient.removeLocationUpdates(locationCallback)
-        }
-        serviceScope.cancel()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

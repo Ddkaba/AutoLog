@@ -57,8 +57,6 @@ class MainActivity : ComponentActivity() {
         createNotificationChannel()
         TokenManager.init(this)
 
-        val tripsViewModel = TripsViewModel(this)
-
         if (SettingsManager.isGpsMileageEnabled()) {
             SimpleTrackingService.start(this)
         }
@@ -214,21 +212,18 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channelId = "autolog_channel"
-            val channelName = "AutoLog Notifications"
-            val channel = NotificationChannel(
-                channelId,
-                channelName,
-                NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "Уведомления о рекомендациях"
-            }
-            val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(channel)
+        val channelId = "autolog_channel"
+        val channelName = "AutoLog Notifications"
+        val channel = NotificationChannel(
+            channelId,
+            channelName,
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            description = "Уведомления о рекомендациях"
         }
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        notificationManager.createNotificationChannel(channel)
     }
-
 
     private fun requestLocationPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

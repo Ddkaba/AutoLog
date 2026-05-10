@@ -192,24 +192,6 @@ fun SettingsScreen(
                         Row(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            IconButton(
-                                onClick = {
-                                    Toast.makeText(
-                                        context,
-                                        "Автоматически отслеживает поездки на авто. " +
-                                                "Начинается при скорости >20 км/ч, " +
-                                                "заканчивается через 5 минут остановки.",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.HelpOutline,
-                                    contentDescription = stringResource(R.string.info),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-
                             Switch(
                                 checked = isGpsEnabled,
                                 onCheckedChange = { enabled ->
