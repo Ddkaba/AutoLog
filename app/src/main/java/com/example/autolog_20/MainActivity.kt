@@ -14,7 +14,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -40,7 +39,6 @@ import com.example.autolog_20.ui.theme.data.model.MainUiState
 import com.example.autolog_20.ui.theme.data.model.STSRecognitionData
 import com.example.autolog_20.ui.theme.data.screen.AddCarByScanDataScreen
 import com.example.autolog_20.ui.theme.data.screen.AddCarFromSTSScreen
-import com.example.autolog_20.ui.theme.data.screen.AssignTripsScreen
 import com.example.autolog_20.ui.theme.data.screen.MileageScreen
 import com.example.autolog_20.ui.theme.data.screen.ServicesScreen
 import com.example.autolog_20.ui.theme.data.tracking.SimpleTrackingService
@@ -163,12 +161,6 @@ class MainActivity : ComponentActivity() {
                         composable("maintenance/{numberPlate}") { backStackEntry ->
                             val numberPlate = backStackEntry.arguments?.getString("numberPlate") ?: ""
                             MaintenanceScreen(navController, numberPlate)
-                        }
-
-                        composable("assign_trips") {
-                            AssignTripsScreen(
-                                navController = navController
-                            )
                         }
 
                         composable("expenses/{numberPlate}") { backStackEntry ->

@@ -11,7 +11,6 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.example.autolog_20.ui.theme.data.locale.LocaleManager
 import com.example.autolog_20.ui.theme.data.locale.SettingsManager
-import com.example.autolog_20.ui.theme.data.tracking.SyncWorker
 import java.util.concurrent.TimeUnit
 
 class AutoLogApplication : Application() {
@@ -29,7 +28,6 @@ class AutoLogApplication : Application() {
         SettingsManager.setLanguageChangeListener {
             restartApp()
         }
-        setupSyncWorker()
     }
 
     private fun restartApp() {
@@ -38,24 +36,6 @@ class AutoLogApplication : Application() {
         startActivity(intent)
         currentActivity?.finishAffinity()
     }
-
-    private fun setupSyncWorker() {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
-
-        val syncRequest = PeriodicWorkRequestBuilder<SyncWorker>(
-            15, TimeUnit.MINUTES
-        ).setConstraints(constraints)
-            .build()
-
-        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            "sync_trips",
-            ExistingPeriodicWorkPolicy.KEEP,
-            syncRequest
-        )
-    }
-
 
     companion object {
         var currentActivity: Activity? = null
