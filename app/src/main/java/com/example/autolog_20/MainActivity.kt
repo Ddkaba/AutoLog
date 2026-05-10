@@ -35,7 +35,7 @@ import com.example.autolog_20.ui.theme.data.screen.RegisterScreen
 import com.example.autolog_20.ui.theme.data.screen.SettingsScreen
 import com.example.autolog_20.ui.theme.data.screen.StartupScreen
 import com.example.autolog_20.ui.theme.data.locale.SettingsManager
-import com.example.autolog_20.ui.theme.data.model.MainUiState
+import com.example.autolog_20.ui.theme.data.model.viewmodel.TripsViewModel
 import com.example.autolog_20.ui.theme.data.model.STSRecognitionData
 import com.example.autolog_20.ui.theme.data.screen.AddCarByScanDataScreen
 import com.example.autolog_20.ui.theme.data.screen.AddCarFromSTSScreen
@@ -56,6 +56,8 @@ class MainActivity : ComponentActivity() {
         AutoLogApplication.currentActivity = this
         createNotificationChannel()
         TokenManager.init(this)
+
+        val tripsViewModel = TripsViewModel(this)
 
         if (SettingsManager.isGpsMileageEnabled()) {
             SimpleTrackingService.start(this)
