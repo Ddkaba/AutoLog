@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">AutoLog</string>
+    <string name="app_name">АвтоЛог</string>
     <string name="data_from_STS">Данные из СТС</string>
     <string name="back">Назад</string>
     <string name="check_data">Проверьте и отредактируйте распознанные данные</string>

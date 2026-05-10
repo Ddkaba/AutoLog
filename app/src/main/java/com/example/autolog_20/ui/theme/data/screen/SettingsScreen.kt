@@ -1,6 +1,7 @@
 package com.example.autolog_20.ui.theme.data.screen
 
 import android.app.Activity
+import android.content.Intent
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,9 +19,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Brightness2
 import androidx.compose.material.icons.filled.Brightness5
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.autolog_20.R
 import com.example.autolog_20.ui.theme.data.locale.SettingsManager
+import com.example.autolog_20.ui.theme.data.tracking.TrackingService
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,7 +58,7 @@ fun SettingsScreen(
     val context = LocalContext.current
     var selectedLanguage by remember { mutableStateOf(SettingsManager.getLanguage()) }
     var selectedTheme by remember { mutableStateOf(SettingsManager.getTheme()) }
-    var isGpsEnabled by remember { mutableStateOf(SettingsManager.isGpsMileageEnabled()) }
+    var isGpsTrackingEnabled by remember { mutableStateOf(SettingsManager.isGpsTrackingEnabled()) }
 
     Scaffold(
         topBar = {
@@ -155,43 +156,41 @@ fun SettingsScreen(
 
             SettingsCard(
                 title = stringResource(R.string.gps_work),
-                icon = Icons.Default.LocationOn
+                icon = Icons.Default.Speed
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = if (isGpsEnabled) stringResource(R.string.on) else stringResource(R.string.off),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (isGpsEnabled)
-                            MaterialTheme.colorScheme.primary
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(
-                            onClick = { /* TODO: Показать информацию о функции */ }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.HelpOutline,
-                                contentDescription = stringResource(R.string.info),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-
-                        Switch(
-                            checked = isGpsEnabled,
-                            onCheckedChange = {
-                                isGpsEnabled = it
-                                SettingsManager.setGpsMileageEnabled(it)
-                            }
+                    Column {
+                        Text(
+                            text = if (isGpsTrackingEnabled) stringResource(R.string.on) else stringResource(R.string.off),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isGpsTrackingEnabled)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = "Автоматически записывать поездки",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+
+                    Switch(
+                        checked = isGpsTrackingEnabled,
+                        onCheckedChange = {
+                            isGpsTrackingEnabled = it
+                            SettingsManager.setGpsTrackingEnabled(it)
+                            if (it) {
+                                context.startService(Intent(context, TrackingService::class.java))
+                            } else {
+                                context.stopService(Intent(context, TrackingService::class.java))
+                            }
+                        }
+                    )
                 }
             }
         }

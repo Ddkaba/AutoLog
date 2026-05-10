@@ -10,6 +10,9 @@ object SettingsManager {
     private const val KEY_THEME = "theme"
     private const val KEY_GPS_MILEAGE = "gps_mileage"
 
+    private const val KEY_GPS_TRACKING_ENABLED = "gps_tracking_enabled"
+    private const val KEY_SHOW_ASSIGN_TRIPS = "show_assign_trips"
+
     private lateinit var prefs: SharedPreferences
     private var languageChangeListener: (() -> Unit)? = null
 
@@ -38,5 +41,17 @@ object SettingsManager {
 
     fun setGpsMileageEnabled(enabled: Boolean) {
         prefs.edit { putBoolean(KEY_GPS_MILEAGE, enabled) }
+    }
+
+    fun isGpsTrackingEnabled(): Boolean = prefs.getBoolean(KEY_GPS_TRACKING_ENABLED, false)
+
+    fun setGpsTrackingEnabled(enabled: Boolean) {
+        prefs.edit { putBoolean(KEY_GPS_TRACKING_ENABLED, enabled) }
+    }
+
+    fun shouldShowAssignTrips(): Boolean = prefs.getBoolean(KEY_SHOW_ASSIGN_TRIPS, true)
+
+    fun setShowAssignTrips(show: Boolean) {
+        prefs.edit { putBoolean(KEY_SHOW_ASSIGN_TRIPS, show) }
     }
 }

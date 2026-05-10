@@ -25,16 +25,3 @@ data class Trip(
     val isCompleted: Boolean = false,
     val routePoints: String = ""
 )
-
-@Entity(tableName = "gps_points")
-data class GpsPoint(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0,
-    val tripId: Long,
-    val timestamp: Date,
-    val latitude: Double,
-    val longitude: Double,
-    val accuracy: Float,
-    val speed: Float,
-    val altitude: Double
-)

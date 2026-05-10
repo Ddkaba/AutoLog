@@ -81,7 +81,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import com.example.autolog_20.R
 import com.example.autolog_20.ui.theme.DeleteColor
+import com.example.autolog_20.ui.theme.data.locale.SettingsManager
 import com.example.autolog_20.ui.theme.data.model.MainUiState
+import com.example.autolog_20.ui.theme.data.model.viewmodel.TripsViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlin.math.abs
 
@@ -97,6 +99,7 @@ fun MainScreen(
             }
         }
     )
+
 ) {
 
     val context = LocalContext.current
@@ -105,8 +108,29 @@ fun MainScreen(
     val scope = rememberCoroutineScope()
     var showAddOptions by remember { mutableStateOf(false) }
 
+    val tripsViewModel: TripsViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return TripsViewModel(context) as T
+            }
+        }
+    )
+
+    val unassignedTrips by tripsViewModel.unassignedTrips.collectAsStateWithLifecycle()
+    var showAssignDialog by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         viewModel.loadCars()
+    }
+
+    LaunchedEffect(Unit) {
+        tripsViewModel.loadUnassignedTrips()
+    }
+
+    LaunchedEffect(unassignedTrips) {
+        if (unassignedTrips.isNotEmpty() && SettingsManager.shouldShowAssignTrips()) {
+            showAssignDialog = true
+        }
     }
 
     Scaffold(
@@ -240,6 +264,39 @@ fun MainScreen(
                     }
                 )
             }
+        }
+
+        if (showAssignDialog && unassignedTrips.isNotEmpty()) {
+            AlertDialog(
+                onDismissRequest = {
+                    showAssignDialog = false
+                    SettingsManager.setShowAssignTrips(false)
+                },
+                title = { Text("Обнаружены новые поездки") },
+                text = {
+                    Text("У вас есть ${unassignedTrips.size} непривязанных поездок. Хотите привязать их к автомобилям?")
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showAssignDialog = false
+                            navController.navigate("assign_trips")
+                        }
+                    ) {
+                        Text("Привязать")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            showAssignDialog = false
+                            SettingsManager.setShowAssignTrips(false)
+                        }
+                    ) {
+                        Text("Позже")
+                    }
+                }
+            )
         }
     }
 }
