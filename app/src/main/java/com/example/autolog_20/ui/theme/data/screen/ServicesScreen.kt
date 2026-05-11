@@ -2,6 +2,7 @@ package com.example.autolog_20.ui.theme.data.screen
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -55,6 +56,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -64,13 +66,17 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.autolog_20.R
 import com.example.autolog_20.ui.theme.data.api.RetrofitClient
 import com.example.autolog_20.ui.theme.data.model.RouteInfo
 import com.example.autolog_20.ui.theme.data.model.ServicePlace
 import com.example.autolog_20.ui.theme.data.model.ServicesUiState
 import com.example.autolog_20.ui.theme.data.model.viewmodel.ServicesViewModel
-import androidx.core.net.toUri
 import com.example.autolog_20.ui.theme.data.model.OSMInitializer
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Polyline
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,11 +107,11 @@ fun ServicesScreen(
     var showRouteSheet by remember { mutableStateOf(false) }
 
     val radiusOptions = listOf(
-        1000 to "1 км",
-        3000 to "3 км",
-        5000 to "5 км",
-        10000 to "10 км",
-        20000 to "20 км"
+        1000 to stringResource(R.string.radius_1km),
+        3000 to stringResource(R.string.radius_3km),
+        5000 to stringResource(R.string.radius_5km),
+        10000 to stringResource(R.string.radius_10km),
+        20000 to stringResource(R.string.radius_20km)
     )
 
     LaunchedEffect(Unit) {
@@ -116,17 +122,17 @@ fun ServicesScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Поиск автосервисов") },
+                title = { Text(stringResource(R.string.services_title)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back_button_services))
                     }
                 },
                 actions = {
                     IconButton(onClick = { showRadiusSelector = true }) {
                         Icon(
                             imageVector = Icons.Default.RadioButtonChecked,
-                            contentDescription = "Выбрать радиус"
+                            contentDescription = stringResource(R.string.select_radius_button)
                         )
                     }
                 }
@@ -147,8 +153,8 @@ fun ServicesScreen(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    label = { Text("Что ищем?") },
-                    placeholder = { Text("Автосервис, шиномонтаж, ТО...") },
+                    label = { Text(stringResource(R.string.search_label)) },
+                    placeholder = { Text(stringResource(R.string.search_placeholder)) },
                     modifier = Modifier.weight(1f),
                     trailingIcon = {
                         IconButton(
@@ -156,7 +162,7 @@ fun ServicesScreen(
                                 viewModel.searchServices(currentLat, currentLon, searchQuery, selectedRadius)
                             }
                         ) {
-                            Icon(Icons.Default.Search, contentDescription = "Поиск")
+                            Icon(Icons.Default.Search, contentDescription = stringResource(R.string.search_button))
                         }
                     }
                 )
@@ -210,7 +216,7 @@ fun ServicesScreen(
 
     if (showRadiusSelector) {
         ModalBottomSheet(
-            onDismissRequest = { },
+            onDismissRequest = { showRadiusSelector = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
         ) {
             Column(
@@ -220,7 +226,7 @@ fun ServicesScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Выберите радиус поиска",
+                    text = stringResource(R.string.select_search_radius),
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(bottom = 24.dp)
                 )
@@ -235,6 +241,7 @@ fun ServicesScreen(
                             .clickable {
                                 selectedRadius = radius
                                 viewModel.searchServices(currentLat, currentLon, searchQuery, selectedRadius)
+                                showRadiusSelector = false
                             },
                         shape = RoundedCornerShape(12.dp),
                         color = if (isSelected)
@@ -264,7 +271,7 @@ fun ServicesScreen(
                             if (isSelected) {
                                 Icon(
                                     imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = "Выбрано",
+                                    contentDescription = stringResource(R.string.selected_desc),
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(24.dp)
                                 )
@@ -275,8 +282,8 @@ fun ServicesScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                TextButton(onClick = { }) {
-                    Text("Отмена")
+                TextButton(onClick = { showRadiusSelector = false }) {
+                    Text(stringResource(R.string.cancel_button_radius))
                 }
             }
         }
@@ -287,7 +294,7 @@ fun ServicesScreen(
             routeInfo = routeInfo!!,
             currentLat = currentLat,
             currentLon = currentLon,
-            onDismiss = { },
+            onDismiss = { showRouteSheet = false },
             onOpenMaps = {
                 openInYandexMaps(currentLat, currentLon, selectedService!!.lat, selectedService!!.lon, context)
             },
@@ -319,13 +326,13 @@ fun EmptyServicesContent() {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Ничего не найдено",
+            text = stringResource(R.string.nothing_found),
             style = MaterialTheme.typography.titleLarge,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "Попробуйте изменить поисковый запрос или увеличить радиус поиска",
+            text = stringResource(R.string.nothing_found_hint),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -353,7 +360,7 @@ fun ErrorContentServices(
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Ошибка",
+            text = stringResource(R.string.error_title),
             style = MaterialTheme.typography.titleLarge
         )
         Spacer(modifier = Modifier.height(8.dp))
@@ -365,7 +372,7 @@ fun ErrorContentServices(
         )
         Spacer(modifier = Modifier.height(24.dp))
         Button(onClick = onRetry) {
-            Text("Повторить")
+            Text(stringResource(R.string.retry_button_services))
         }
     }
 }
@@ -380,6 +387,8 @@ fun OSMViewHolder(
     endLon: Double
 ) {
     val context = LocalContext.current
+    val startMarkerText = stringResource(R.string.start_marker)
+    val endMarkerText = stringResource(R.string.end_marker)
 
     LaunchedEffect(Unit) {
         OSMInitializer.initialize(context.applicationContext)
@@ -387,7 +396,7 @@ fun OSMViewHolder(
 
     AndroidView(
         factory = { ctx ->
-            org.osmdroid.views.MapView(ctx).apply {
+            MapView(ctx).apply {
                 setMultiTouchControls(true)
 
                 val mapController = controller
@@ -417,7 +426,7 @@ fun OSMViewHolder(
 
                     val centerLat = (north + south) / 2
                     val centerLon = (east + west) / 2
-                    mapController.setCenter(org.osmdroid.util.GeoPoint(centerLat, centerLon))
+                    mapController.setCenter(GeoPoint(centerLat, centerLon))
 
                     val latSpan = north - south
                     val lonSpan = east - west
@@ -437,26 +446,26 @@ fun OSMViewHolder(
                 } else {
                     val centerLat = (startLat + endLat) / 2
                     val centerLon = (startLon + endLon) / 2
-                    mapController.setCenter(org.osmdroid.util.GeoPoint(centerLat, centerLon))
+                    mapController.setCenter(GeoPoint(centerLat, centerLon))
                     mapController.setZoom(13.0)
                 }
 
-                val startMarker = org.osmdroid.views.overlay.Marker(this)
-                startMarker.position = org.osmdroid.util.GeoPoint(startLat, startLon)
-                startMarker.title = "Старт"
-                startMarker.setAnchor(org.osmdroid.views.overlay.Marker.ANCHOR_CENTER, org.osmdroid.views.overlay.Marker.ANCHOR_BOTTOM)
+                val startMarker = Marker(this)
+                startMarker.position = GeoPoint(startLat, startLon)
+                startMarker.title = startMarkerText
+                startMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                 overlays.add(startMarker)
 
-                val endMarker = org.osmdroid.views.overlay.Marker(this)
-                endMarker.position = org.osmdroid.util.GeoPoint(endLat, endLon)
-                endMarker.title = "Финиш"
-                endMarker.setAnchor(org.osmdroid.views.overlay.Marker.ANCHOR_CENTER, org.osmdroid.views.overlay.Marker.ANCHOR_BOTTOM)
+                val endMarker = Marker(this)
+                endMarker.position = GeoPoint(endLat, endLon)
+                endMarker.title = endMarkerText
+                endMarker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
                 overlays.add(endMarker)
 
-                val lineOverlay = org.osmdroid.views.overlay.Polyline()
-                val points = polyline.map { org.osmdroid.util.GeoPoint(it[0], it[1]) }
+                val lineOverlay = Polyline()
+                val points = polyline.map { GeoPoint(it[0], it[1]) }
                 lineOverlay.setPoints(points)
-                lineOverlay.color = android.graphics.Color.BLUE
+                lineOverlay.color = Color.BLUE
                 lineOverlay.width = 5f
                 overlays.add(lineOverlay)
 
@@ -515,7 +524,7 @@ fun ServiceCard(
 
             Icon(
                 imageVector = Icons.Default.Directions,
-                contentDescription = "Построить маршрут",
+                contentDescription = stringResource(R.string.route_button),
                 tint = MaterialTheme.colorScheme.primary
             )
         }
@@ -554,7 +563,7 @@ fun RouteInfoBottomSheet(
                 .padding(24.dp)
         ) {
             Text(
-                text = "Информация о маршруте",
+                text = stringResource(R.string.route_info_title),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -598,7 +607,7 @@ fun RouteInfoBottomSheet(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Расстояние",
+                        text = stringResource(R.string.distance_label),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -618,7 +627,7 @@ fun RouteInfoBottomSheet(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Время",
+                        text = stringResource(R.string.duration_label),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -628,7 +637,7 @@ fun RouteInfoBottomSheet(
             if (routeInfo.maneuvers.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(24.dp))
                 Text(
-                    text = "Инструкции",
+                    text = stringResource(R.string.instructions_label),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -670,7 +679,7 @@ fun RouteInfoBottomSheet(
                     contentDescription = null
                 )
                 Spacer(modifier = Modifier.width(30.dp))
-                Text("Открыть в Яндекс Картах")
+                Text(stringResource(R.string.open_yandex_maps))
             }
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -679,26 +688,28 @@ fun RouteInfoBottomSheet(
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Закрыть")
+                Text(stringResource(R.string.close_button))
             }
         }
     }
 }
 
+@Composable
 private fun formatDistance(meters: Double): String {
     return if (meters < 1000) {
-        "${meters.toInt()} м"
+        stringResource(R.string.distance_meters, meters.toInt())
     } else {
-        String.format("%.1f км", meters / 1000)
+        stringResource(R.string.distance_kilometers, meters / 1000)
     }
 }
 
+@Composable
 private fun formatDuration(seconds: Double): String {
     val minutes = (seconds / 60).toInt()
     val secs = (seconds % 60).toInt()
     return when {
-        minutes > 0 && secs > 0 -> "$minutes мин $secs сек"
-        minutes > 0 -> "$minutes мин"
-        else -> "$secs сек"
+        minutes > 0 && secs > 0 -> stringResource(R.string.duration_minutes_seconds, minutes, secs)
+        minutes > 0 -> stringResource(R.string.duration_minutes, minutes)
+        else -> stringResource(R.string.duration_seconds, secs)
     }
 }

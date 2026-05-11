@@ -1,6 +1,5 @@
 package com.example.autolog_20.ui.theme.data.screen
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,7 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -28,7 +26,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -83,7 +80,7 @@ fun AddCarByVinScreen(navController: NavController) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { stringResource(R.string.add_car_3) },
+                title = { Text(stringResource(R.string.add_car_3)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, stringResource(R.string.back))
@@ -173,7 +170,7 @@ fun AddCarByVinScreen(navController: NavController) {
                             if (state is AddCarByVinUiState.Loading) {
                                 CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
                             } else {
-                                Text("Проверить VIN")
+                                Text(stringResource(R.string.check_vin_button))
                             }
                         }
                     }
@@ -181,18 +178,18 @@ fun AddCarByVinScreen(navController: NavController) {
 
                 is AddCarByVinUiState.Preview -> {
                     val preview = state.data
-                    Text("Найден автомобиль", style = MaterialTheme.typography.titleLarge)
+                    Text(stringResource(R.string.car_found_title), style = MaterialTheme.typography.titleLarge)
                     Spacer(Modifier.height(24.dp))
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(20.dp)) {
-                            DetailRow("Марка", preview.brand)
-                            DetailRow("Модель", preview.model)
-                            DetailRow("VIN", preview.vin)
-                            DetailRow("Тип топлива",
+                            DetailRow(stringResource(R.string.brand_label), preview.brand)
+                            DetailRow(stringResource(R.string.model_label), preview.model)
+                            DetailRow(stringResource(R.string.vin_label), preview.vin)
+                            DetailRow(stringResource(R.string.fuel_type_label),
                                 when(preview.fuel) {
-                                    "Petrol" -> "Бензин"
-                                    "Diesel" -> "Дизель"
-                                    "Electric" -> "Электро"
+                                    "Petrol" -> stringResource(R.string.petrol)
+                                    "Diesel" -> stringResource(R.string.diesel)
+                                    "Electric" -> stringResource(R.string.electric)
                                     else -> preview.fuel
                                 }
                             )
@@ -201,7 +198,7 @@ fun AddCarByVinScreen(navController: NavController) {
 
                     Spacer(Modifier.height(40.dp))
 
-                    Text("Это правильный автомобиль?", style = MaterialTheme.typography.titleMedium)
+                    Text(stringResource(R.string.is_this_correct), style = MaterialTheme.typography.titleMedium)
 
                     Spacer(Modifier.height(24.dp))
 
@@ -213,14 +210,14 @@ fun AddCarByVinScreen(navController: NavController) {
                             onClick = { viewModel.confirmVin() },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Да, верно")
+                            Text(stringResource(R.string.yes_correct))
                         }
 
                         OutlinedButton(
                             onClick = { viewModel.resetToInput() },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Text("Нет, другой VIN")
+                            Text(stringResource(R.string.no_different_vin))
                         }
                     }
                 }
@@ -241,7 +238,7 @@ fun AddCarByVinScreen(navController: NavController) {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "Информация об автомобиле",
+                            text = stringResource(R.string.car_info_title),
                             style = MaterialTheme.typography.titleLarge
                         )
 
@@ -250,7 +247,7 @@ fun AddCarByVinScreen(navController: NavController) {
                         OutlinedTextField(
                             value = mileageInput,
                             onValueChange = { mileageInput = it.filter { c -> c.isDigit() } },
-                            label = { Text("Пробег (км)") },
+                            label = { Text(stringResource(R.string.mileage_label)) },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.fillMaxWidth(),
                             isError = mileageInput.isNotBlank() && (mileageInput.toIntOrNull() == null || (mileageInput.toIntOrNull()
@@ -259,7 +256,7 @@ fun AddCarByVinScreen(navController: NavController) {
                                 if (mileageInput.isNotBlank() && (mileageInput.toIntOrNull() == null || (mileageInput.toIntOrNull()
                                         ?: 0) <= 0)
                                 ) {
-                                    Text("Введите корректный пробег")
+                                    Text(stringResource(R.string.mileage_error))
                                 }
                             }
                         )
@@ -270,8 +267,8 @@ fun AddCarByVinScreen(navController: NavController) {
                         OutlinedTextField(
                             value = yearInput,
                             onValueChange = { yearInput = it.filter { c -> c.isDigit() }.take(4) },
-                            label = { Text("Год выпуска (4 цифры)") },
-                            placeholder = { Text("2020") },
+                            label = { Text(stringResource(R.string.year_label)) },
+                            placeholder = { Text(stringResource(R.string.year_placeholder)) },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.fillMaxWidth(),
                             isError = yearInput.length == 4 && (yearInput.toIntOrNull() == null ||
@@ -281,7 +278,7 @@ fun AddCarByVinScreen(navController: NavController) {
                                 if (yearInput.length == 4 && (yearInput.toIntOrNull() == null ||
                                             yearInput.toIntOrNull()!! < 1900 ||
                                             yearInput.toIntOrNull()!! > currentYear)) {
-                                    Text("Введите корректный год (1900-$currentYear)")
+                                    Text(stringResource(R.string.year_error, currentYear))
                                 }
                             }
                         )
@@ -295,14 +292,14 @@ fun AddCarByVinScreen(navController: NavController) {
                                 carNumberInput = it.uppercase()
                                 checkError = null
                             },
-                            label = { Text("Номер автомобиля") },
-                            placeholder = { Text("A000AA78") },
+                            label = { Text(stringResource(R.string.plate_label)) },
+                            placeholder = { Text(stringResource(R.string.plate_placeholder)) },
                             modifier = Modifier.fillMaxWidth(),
                             isError = (carNumberInput.isNotBlank() && !isNumberValid) || checkError != null,
                             supportingText = {
                                 when {
                                     checkError != null -> Text(checkError!!, color = MaterialTheme.colorScheme.error)
-                                    carNumberInput.isNotBlank() && !isNumberValid -> Text("Пример правильного номера: А123БВ777")
+                                    carNumberInput.isNotBlank() && !isNumberValid -> Text(stringResource(R.string.plate_example))
                                 }
                             }
                         )
@@ -341,7 +338,7 @@ fun AddCarByVinScreen(navController: NavController) {
                             if (isChecking) {
                                 CircularProgressIndicator(modifier = Modifier.size(24.dp))
                             } else {
-                                Text("Продолжить")
+                                Text(stringResource(R.string.continue_button))
                             }
                         }
                     }
@@ -350,6 +347,7 @@ fun AddCarByVinScreen(navController: NavController) {
                 is AddCarByVinUiState.EnterColor -> {
                     var colorInput by remember { mutableStateOf("") }
                     var colorError by remember { mutableStateOf<String?>(null) }
+                    val resources = LocalContext.current.resources
 
                     Column(
                         modifier = Modifier
@@ -359,25 +357,33 @@ fun AddCarByVinScreen(navController: NavController) {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "Укажите цвет автомобиля",
+                            text = stringResource(R.string.color_title),
                             style = MaterialTheme.typography.titleLarge
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Text(
-                            text = "Это поможет при идентификации автомобиля",
+                            text = stringResource(R.string.color_description),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
                         Spacer(modifier = Modifier.height(32.dp))
 
-                        val suggestedColors = listOf("Черный", "Белый", "Серебристый", "Серый",
-                            "Красный", "Синий", "Зеленый", "Желтый")
+                        val suggestedColors = listOf(
+                            stringResource(R.string.color_black),
+                            stringResource(R.string.color_white),
+                            stringResource(R.string.color_silver),
+                            stringResource(R.string.color_gray),
+                            stringResource(R.string.color_red),
+                            stringResource(R.string.color_blue),
+                            stringResource(R.string.color_green),
+                            stringResource(R.string.color_yellow)
+                        )
 
                         Text(
-                            text = "Популярные цвета:",
+                            text = stringResource(R.string.popular_colors_title),
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -405,7 +411,7 @@ fun AddCarByVinScreen(navController: NavController) {
                         Spacer(modifier = Modifier.height(24.dp))
 
                         Text(
-                            text = "Или введите свой вариант:",
+                            text = stringResource(R.string.or_enter_your_own),
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -418,8 +424,8 @@ fun AddCarByVinScreen(navController: NavController) {
                                 colorInput = it
                                 colorError = null
                             },
-                            label = { Text("Цвет автомобиля") },
-                            placeholder = { Text("Например: Темно-синий металлик") },
+                            label = { Text(stringResource(R.string.color_label)) },
+                            placeholder = { Text(stringResource(R.string.color_hint)) },
                             modifier = Modifier.fillMaxWidth(),
                             isError = colorError != null,
                             supportingText = {
@@ -434,7 +440,7 @@ fun AddCarByVinScreen(navController: NavController) {
                         Button(
                             onClick = {
                                 if (colorInput.isBlank()) {
-                                    colorError = "Пожалуйста, укажите цвет автомобиля"
+                                    colorError = resources.getString(R.string.color_error)
                                 } else {
                                     viewModel.saveColorAndContinue(colorInput)
                                 }
@@ -442,7 +448,7 @@ fun AddCarByVinScreen(navController: NavController) {
                             enabled = colorInput.isNotBlank(),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Продолжить")
+                            Text(stringResource(R.string.continue_button))
                         }
                     }
                 }
@@ -473,7 +479,7 @@ fun AddCarByVinScreen(navController: NavController) {
                                 Spacer(Modifier.height(12.dp))
 
                                 Text(
-                                    text = "Найден существующий автомобиль:",
+                                    text = stringResource(R.string.existing_car_found),
                                     style = MaterialTheme.typography.bodyMedium
                                 )
 
@@ -481,8 +487,8 @@ fun AddCarByVinScreen(navController: NavController) {
 
                                 Text(
                                     text = "${state.existingCar.brand} ${state.existingCar.model}\n" +
-                                            "VIN: ${state.existingCar.vin}\n" +
-                                            "Год: ${state.existingCar.yearOfManufacture}",
+                                            "${stringResource(R.string.vin_label)}: ${state.existingCar.vin}\n" +
+                                            "${stringResource(R.string.manufacture_year_label)}: ${state.existingCar.yearOfManufacture}",
                                     style = MaterialTheme.typography.bodySmall
                                 )
 
@@ -494,7 +500,7 @@ fun AddCarByVinScreen(navController: NavController) {
                                     },
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Text("Ввести другой номер")
+                                    Text(stringResource(R.string.enter_different_plate))
                                 }
                             }
                         }
@@ -538,7 +544,7 @@ fun AddCarByVinScreen(navController: NavController) {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "Подтверждение данных",
+                            text = stringResource(R.string.confirm_data_title),
                             style = MaterialTheme.typography.titleLarge
                         )
                         Spacer(Modifier.height(24.dp))
@@ -546,50 +552,50 @@ fun AddCarByVinScreen(navController: NavController) {
                         Card(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(20.dp)) {
                                 Text(
-                                    text = "Основная информация",
+                                    text = stringResource(R.string.basic_info_title),
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.primary
                                 )
                                 Spacer(Modifier.height(12.dp))
-                                DetailRow("Марка", s.vinData.brand)
-                                DetailRow("Модель", s.vinData.model)
-                                DetailRow("VIN", s.vinData.vin)
-                                DetailRow("Тип топлива",
+                                DetailRow(stringResource(R.string.brand_label), s.vinData.brand)
+                                DetailRow(stringResource(R.string.model_label), s.vinData.model)
+                                DetailRow(stringResource(R.string.vin_label), s.vinData.vin)
+                                DetailRow(stringResource(R.string.fuel_type_label),
                                     when(s.fuelType) {
-                                        "Petrol" -> "Бензин"
-                                        "Diesel" -> "Дизель"
-                                        "Electric" -> "Электро"
-                                        "Hybrid" -> "Гибрид"
+                                        "Petrol" -> stringResource(R.string.petrol)
+                                        "Diesel" -> stringResource(R.string.diesel)
+                                        "Electric" -> stringResource(R.string.electric)
+                                        "Hybrid" -> stringResource(R.string.hybrid)
                                         else -> s.fuelType
                                     }
                                 )
-                                DetailRow("Пробег", "${s.mileage} км")
-                                DetailRow("Год выпуска", "${s.year}")
-                                DetailRow("Номер", s.number)
-                                DetailRow("Цвет", s.color)
-                                DetailRow("Привод",
+                                DetailRow(stringResource(R.string.mileage_label), "${s.mileage} ${stringResource(R.string.km)}")
+                                DetailRow(stringResource(R.string.manufacture_year_label), "${s.year}")
+                                DetailRow(stringResource(R.string.plate_label), s.number)
+                                DetailRow(stringResource(R.string.color_label), s.color)
+                                DetailRow(stringResource(R.string.drive_type_label),
                                     when(s.driveType) {
-                                        "FWD" -> "Передний"
-                                        "RWD" -> "Задний"
-                                        "AWD" -> "Полный"
-                                        else -> "Не указан"
+                                        "FWD" -> stringResource(R.string.fwd)
+                                        "RWD" -> stringResource(R.string.rwd)
+                                        "AWD" -> stringResource(R.string.awd)
+                                        else -> stringResource(R.string.not_specified)
                                     }
                                 )
-                                DetailRow("Коробка передач",
+                                DetailRow(stringResource(R.string.transmission_label),
                                     when(s.transmission) {
-                                        "MT" -> "Механика"
-                                        "AT" -> "Автомат"
-                                        "CVT" -> "Вариатор"
-                                        "AMT" -> "Робот"
-                                        else -> "Не указана"
+                                        "MT" -> stringResource(R.string.mt)
+                                        "AT" -> stringResource(R.string.at)
+                                        "CVT" -> stringResource(R.string.cvt)
+                                        "AMT" -> stringResource(R.string.amt)
+                                        else -> stringResource(R.string.not_specified)
                                     }
                                 )
-                                DetailRow("Тип масла",
+                                DetailRow(stringResource(R.string.oil_type_label),
                                     when (s.oilType) {
-                                        "Synthetic" -> "Синтетика"
-                                        "SemiSynthetic" -> "Полусинтетика"
-                                        "Mineral" -> "Минеральное"
-                                        else -> "Не указан"
+                                        "Synthetic" -> stringResource(R.string.synthetic_oil)
+                                        "SemiSynthetic" -> stringResource(R.string.semi_synthetic_oil)
+                                        "Mineral" -> stringResource(R.string.mineral_oil)
+                                        else -> stringResource(R.string.not_specified)
                                     }
                                 )
                             }
@@ -618,7 +624,7 @@ fun AddCarByVinScreen(navController: NavController) {
                             if (isSaving) {
                                 CircularProgressIndicator(modifier = Modifier.size(24.dp))
                             } else {
-                                Text("Добавить автомобиль")
+                                Text(stringResource(R.string.add_car_button))
                             }
                         }
 
@@ -631,7 +637,7 @@ fun AddCarByVinScreen(navController: NavController) {
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Изменить данные")
+                            Text(stringResource(R.string.change_data_button))
                         }
                     }
                 }
@@ -644,10 +650,10 @@ fun AddCarByVinScreen(navController: NavController) {
                     ) {
                         Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(80.dp))
                         Spacer(Modifier.height(16.dp))
-                        Text("Автомобиль успешно добавлен!", style = MaterialTheme.typography.titleLarge)
+                        Text(stringResource(R.string.car_added_success), style = MaterialTheme.typography.titleLarge)
                         Spacer(Modifier.height(32.dp))
                         Button(onClick = { navController.popBackStack() }) {
-                            Text("Вернуться к списку автомобилей")
+                            Text(stringResource(R.string.back_to_cars))
                         }
                     }
                 }

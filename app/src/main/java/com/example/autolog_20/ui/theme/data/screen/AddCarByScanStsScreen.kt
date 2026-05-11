@@ -54,6 +54,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -63,7 +64,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.autolog_20.ui.theme.data.api.RetrofitClient
+import com.example.autolog_20.R
 import com.example.autolog_20.ui.theme.data.model.STSRecognitionUiState
 import com.example.autolog_20.ui.theme.data.model.viewmodel.STSViewModel
 import kotlinx.coroutines.launch
@@ -77,6 +78,7 @@ import java.io.File
 fun AddCarByScanStsScreen(navController: NavController) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val resources = LocalContext.current.resources
 
     val viewModel: STSViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
@@ -93,7 +95,6 @@ fun AddCarByScanStsScreen(navController: NavController) {
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var tempPhotoFile by remember { mutableStateOf<File?>(null) }
 
-    // Состояние для отслеживания, показывать ли форму редактирования
     var showEditForm by remember { mutableStateOf(false) }
 
     var editedVin by remember { mutableStateOf("") }
@@ -103,10 +104,8 @@ fun AddCarByScanStsScreen(navController: NavController) {
     var editedColor by remember { mutableStateOf("") }
     var editedNumberPlate by remember { mutableStateOf("") }
 
-    // Разрешение на камеру
     val cameraPermission = Manifest.permission.CAMERA
 
-    // Ланчер для камеры
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture()
     ) { success ->
@@ -117,13 +116,12 @@ fun AddCarByScanStsScreen(navController: NavController) {
                     "${context.packageName}.fileprovider",
                     file
                 )
-                recognizeSTS(selectedImageUri!!, viewModel, scope, context)
+                recognizeSTS(selectedImageUri!!, viewModel, scope, context, resources)
             }
         }
         showImageSourceSheet = false
     }
 
-    // Ланчер для разрешения на камеру
     val cameraPermissionState = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
@@ -138,18 +136,17 @@ fun AddCarByScanStsScreen(navController: NavController) {
             )
             cameraLauncher.launch(photoUri)
         } else {
-            Toast.makeText(context, "Для сканирования СТС нужно разрешение на камеру", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, resources.getString(R.string.add_car_by_sts_title), Toast.LENGTH_SHORT).show()
             showImageSourceSheet = false
         }
     }
 
-    // Ланчер для галереи
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let {
             selectedImageUri = it
-            recognizeSTS(it, viewModel, scope, context)
+            recognizeSTS(it, viewModel, scope, context, resources)
         }
         showImageSourceSheet = false
     }
@@ -164,24 +161,22 @@ fun AddCarByScanStsScreen(navController: NavController) {
                 editedYear = data.year
                 editedColor = data.color
                 editedNumberPlate = data.numberPlate
-                showEditForm = true // Показываем форму редактирования при успешном распознавании
+                showEditForm = true
             }
             STSRecognitionUiState.Loading -> {
-                showEditForm = true // Показываем форму с прогрессом
+                showEditForm = true
             }
-            else -> {
-                // Не показываем форму если нет данных
-            }
+            else -> { }
         }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Добавление по СТС") },
+                title = { Text(resources.getString(R.string.add_car_by_sts_title)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, "Назад")
+                        Icon(Icons.Default.ArrowBack, resources.getString(R.string.back))
                     }
                 }
             )
@@ -214,7 +209,7 @@ fun AddCarByScanStsScreen(navController: NavController) {
                         Spacer(modifier = Modifier.height(24.dp))
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text("Распознавание текста...")
+                        Text(resources.getString(R.string.recognizing_text))
                     }
                 }
 
@@ -252,16 +247,16 @@ fun AddCarByScanStsScreen(navController: NavController) {
                                     )
                                 } else {
                                     val errors = mutableListOf<String>()
-                                    if (editedVin.length != 17) errors.add("VIN")
-                                    if (editedBrand.isBlank()) errors.add("марку")
-                                    if (editedModel.isBlank()) errors.add("модель")
-                                    if (editedYear !in 1900..2028) errors.add("год выпуска")
-                                    if (editedColor.isBlank()) errors.add("цвет")
-                                    if (editedNumberPlate.isBlank()) errors.add("номер")
+                                    if (editedVin.length != 17) errors.add(resources.getString(R.string.fill_field_vin))
+                                    if (editedBrand.isBlank()) errors.add(resources.getString(R.string.fill_field_brand))
+                                    if (editedModel.isBlank()) errors.add(resources.getString(R.string.fill_field_model))
+                                    if (editedYear !in 1900..2028) errors.add(resources.getString(R.string.fill_field_year))
+                                    if (editedColor.isBlank()) errors.add(resources.getString(R.string.fill_field_color))
+                                    if (editedNumberPlate.isBlank()) errors.add(resources.getString(R.string.fill_field_plate))
 
                                     val message = when (errors.size) {
-                                        1 -> "Заполните поле: ${errors[0]}"
-                                        else -> "Заполните поля: ${errors.joinToString(", ")}"
+                                        1 -> resources.getString(R.string.fill_fields_single, errors[0])
+                                        else -> resources.getString(R.string.fill_fields_multiple, errors.joinToString(", "))
                                     }
                                     Toast.makeText(context, message, Toast.LENGTH_LONG).show()
                                 }
@@ -287,7 +282,7 @@ fun AddCarByScanStsScreen(navController: NavController) {
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Попробовать снова")
+                            Text(resources.getString(R.string.try_again))
                         }
                     }
                 }
@@ -331,14 +326,14 @@ private fun InitialContent(
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
-            text = "Сканирование СТС",
+            text = stringResource(R.string.scan_sts_title),
             style = MaterialTheme.typography.headlineMedium
         )
 
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = "Сфотографируйте или выберите фото свидетельства о регистрации ТС",
+            text = stringResource(R.string.scan_sts_description),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -355,7 +350,7 @@ private fun InitialContent(
                 modifier = Modifier.size(20.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Выбрать фото СТС")
+            Text(stringResource(R.string.select_sts_photo))
         }
     }
 }
@@ -375,7 +370,7 @@ private fun PhotoThumbnail(uri: Uri, context: Context) {
         bitmap?.let {
             Image(
                 bitmap = it.asImageBitmap(),
-                contentDescription = "СТС фото",
+                contentDescription = stringResource(R.string.sts_photo),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp)
@@ -411,7 +406,7 @@ private fun EditFormContent(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = "Распознанные данные",
+                text = stringResource(R.string.recognized_data),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -421,7 +416,7 @@ private fun EditFormContent(
             OutlinedTextField(
                 value = editedVin,
                 onValueChange = onVinChange,
-                label = { Text("VIN") },
+                label = { Text(stringResource(R.string.vin_label)) },
                 modifier = Modifier.fillMaxWidth(),
                 readOnly = false
             )
@@ -431,7 +426,7 @@ private fun EditFormContent(
             OutlinedTextField(
                 value = editedBrand,
                 onValueChange = onBrandChange,
-                label = { Text("Марка") },
+                label = { Text(stringResource(R.string.brand_label)) },
                 modifier = Modifier.fillMaxWidth(),
                 readOnly = false
             )
@@ -441,7 +436,7 @@ private fun EditFormContent(
             OutlinedTextField(
                 value = editedModel,
                 onValueChange = onModelChange,
-                label = { Text("Модель") },
+                label = { Text(stringResource(R.string.model_label)) },
                 modifier = Modifier.fillMaxWidth(),
                 readOnly = false
             )
@@ -451,7 +446,7 @@ private fun EditFormContent(
             OutlinedTextField(
                 value = if (editedYear > 0) editedYear.toString() else "",
                 onValueChange = { onYearChange(it.toIntOrNull() ?: 0) },
-                label = { Text("Год выпуска") },
+                label = { Text(stringResource(R.string.manufacture_year_label)) },
                 modifier = Modifier.fillMaxWidth(),
                 readOnly = false
             )
@@ -461,7 +456,7 @@ private fun EditFormContent(
             OutlinedTextField(
                 value = editedColor,
                 onValueChange = onColorChange,
-                label = { Text("Цвет") },
+                label = { Text(stringResource(R.string.color_label)) },
                 modifier = Modifier.fillMaxWidth(),
                 readOnly = false
             )
@@ -471,7 +466,7 @@ private fun EditFormContent(
             OutlinedTextField(
                 value = editedNumberPlate,
                 onValueChange = onNumberPlateChange,
-                label = { Text("Номер автомобиля") },
+                label = { Text(stringResource(R.string.number_plate_label)) },
                 modifier = Modifier.fillMaxWidth(),
                 readOnly = false
             )
@@ -486,14 +481,14 @@ private fun EditFormContent(
                     onClick = onSelectNewPhoto,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Выбрать другое фото")
+                    Text(stringResource(R.string.select_different_photo))
                 }
 
                 Button(
                     onClick = onConfirm,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Далее")
+                    Text(stringResource(R.string.next_button))
                 }
             }
         }
@@ -518,7 +513,7 @@ private fun ImageSourceBottomSheet(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Выберите источник",
+                text = stringResource(R.string.select_source),
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(bottom = 24.dp)
             )
@@ -545,7 +540,7 @@ private fun ImageSourceBottomSheet(
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
-                        text = "Выбрать из галереи",
+                        text = stringResource(R.string.select_from_gallery),
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
@@ -573,7 +568,7 @@ private fun ImageSourceBottomSheet(
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
-                        text = "Сделать фото",
+                        text = stringResource(R.string.take_photo),
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
@@ -582,7 +577,7 @@ private fun ImageSourceBottomSheet(
             Spacer(modifier = Modifier.height(16.dp))
 
             TextButton(onClick = onDismiss) {
-                Text("Отмена")
+                Text(stringResource(R.string.cancel))
             }
         }
     }
@@ -592,7 +587,8 @@ private fun recognizeSTS(
     uri: Uri,
     viewModel: STSViewModel,
     scope: kotlinx.coroutines.CoroutineScope,
-    context: Context
+    context: Context,
+    resources: android.content.res.Resources
 ) {
     scope.launch {
         try {
@@ -609,7 +605,7 @@ private fun recognizeSTS(
 
             viewModel.recognizeSTS(photoPart)
         } catch (e: Exception) {
-            Toast.makeText(context, "Ошибка: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, resources.getString(R.string.recognition_error, e.message ?: "unknown"), Toast.LENGTH_SHORT).show()
         }
     }
 }

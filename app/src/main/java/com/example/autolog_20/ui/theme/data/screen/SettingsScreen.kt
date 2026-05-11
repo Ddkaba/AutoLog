@@ -1,8 +1,6 @@
 package com.example.autolog_20.ui.theme.data.screen
 
-import android.Manifest
 import android.app.Activity
-import android.content.pm.PackageManager
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -12,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -22,11 +19,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Brightness2
 import androidx.compose.material.icons.filled.Brightness5
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,7 +45,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
 import com.example.autolog_20.R
 import com.example.autolog_20.ui.theme.data.locale.SettingsManager
@@ -67,12 +60,13 @@ fun SettingsScreen(
     var selectedTheme by remember { mutableStateOf(SettingsManager.getTheme()) }
     var isGpsEnabled by remember { mutableStateOf(SettingsManager.isGpsMileageEnabled()) }
 
-    var isTracking by remember { mutableStateOf(false) }
+    val gpsStartedMessage = stringResource(R.string.gps_started)
+    val gpsStoppedMessage = stringResource(R.string.gps_stopped)
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.settings)) },
+                title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.back))
@@ -90,7 +84,7 @@ fun SettingsScreen(
         ) {
 
             SettingsCard(
-                title = stringResource(R.string.language),
+                title = stringResource(R.string.language_settings),
                 icon = Icons.Default.Language
             ) {
                 Row(
@@ -100,7 +94,7 @@ fun SettingsScreen(
                 ) {
                     LanguageOption(
                         language = "ru",
-                        label = stringResource(R.string.russian),
+                        label = stringResource(R.string.russian_lang),
                         flagResId = R.drawable.ic_ru_flag,
                         isSelected = selectedLanguage == "ru",
                         onClick = {
@@ -113,7 +107,7 @@ fun SettingsScreen(
 
                     LanguageOption(
                         language = "en",
-                        label = stringResource(R.string.english),
+                        label = stringResource(R.string.english_lang),
                         flagResId = R.drawable.ic_en_flag,
                         isSelected = selectedLanguage == "en",
                         onClick = {
@@ -127,7 +121,7 @@ fun SettingsScreen(
             }
 
             SettingsCard(
-                title = stringResource(R.string.theme),
+                title = stringResource(R.string.theme_settings),
                 icon = if (selectedTheme == "dark") Icons.Default.Brightness2 else Icons.Default.Brightness5
             ) {
                 Row(
@@ -137,7 +131,7 @@ fun SettingsScreen(
                 ) {
                     ThemeOption(
                         theme = "dark",
-                        label = stringResource(R.string.dark),
+                        label = stringResource(R.string.dark_theme),
                         icon = Icons.Default.Brightness2,
                         isSelected = selectedTheme == "dark",
                         onClick = {
@@ -150,7 +144,7 @@ fun SettingsScreen(
 
                     ThemeOption(
                         theme = "light",
-                        label = stringResource(R.string.light),
+                        label = stringResource(R.string.light_theme),
                         icon = Icons.Default.Brightness5,
                         isSelected = selectedTheme == "light",
                         onClick = {
@@ -164,12 +158,12 @@ fun SettingsScreen(
             }
 
             SettingsCard(
-                title = stringResource(R.string.gps_work),
+                title = stringResource(R.string.gps_settings),
                 icon = Icons.Default.LocationOn
             ) {
                 Column {
                     Text(
-                        text = stringResource(R.string.gps_mileage_description),
+                        text = stringResource(R.string.gps_description),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 8.dp)
@@ -181,7 +175,7 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = if (isGpsEnabled) stringResource(R.string.on) else stringResource(R.string.off),
+                            text = if (isGpsEnabled) stringResource(R.string.on_status) else stringResource(R.string.off_status),
                             style = MaterialTheme.typography.bodyMedium,
                             color = if (isGpsEnabled)
                                 MaterialTheme.colorScheme.primary
@@ -200,10 +194,10 @@ fun SettingsScreen(
 
                                     if (enabled) {
                                         SimpleTrackingService.start(context)
-                                        Toast.makeText(context, "GPS трекер запущен", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, gpsStartedMessage, Toast.LENGTH_SHORT).show()
                                     } else {
                                         SimpleTrackingService.stop(context)
-                                        Toast.makeText(context, "GPS трекер остановлен", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, gpsStoppedMessage, Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             )

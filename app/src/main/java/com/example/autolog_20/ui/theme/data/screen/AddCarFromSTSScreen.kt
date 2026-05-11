@@ -38,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -46,6 +47,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.autolog_20.R
 import com.example.autolog_20.ui.theme.data.api.RetrofitClient
 import com.example.autolog_20.ui.theme.data.model.AddCarFromSTSUiState
 import com.example.autolog_20.ui.theme.data.model.DrivingSurvey
@@ -88,10 +90,10 @@ fun AddCarFromSTSScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Данные из СТС") },
+                title = { Text(stringResource(R.string.data_from_sts_title)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, "Назад")
+                        Icon(Icons.Default.ArrowBack, stringResource(R.string.back_button))
                     }
                 }
             )
@@ -110,7 +112,7 @@ fun AddCarFromSTSScreen(
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text("Проверка данных...")
+                        Text(stringResource(R.string.checking_data))
                     }
                 }
 
@@ -127,7 +129,7 @@ fun AddCarFromSTSScreen(
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                         Button(onClick = { navController.popBackStack() }) {
-                            Text("Назад")
+                            Text(stringResource(R.string.back_button))
                         }
                     }
                 }
@@ -135,17 +137,17 @@ fun AddCarFromSTSScreen(
                 is AddCarFromSTSUiState.Preview -> {
                     val data = state.data
 
-                    Text("Подтвердите данные", style = MaterialTheme.typography.titleLarge)
+                    Text(stringResource(R.string.confirm_data), style = MaterialTheme.typography.titleLarge)
                     Spacer(Modifier.height(24.dp))
 
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(modifier = Modifier.padding(20.dp)) {
-                            DetailRow("Марка", data.brand)
-                            DetailRow("Модель", data.model)
-                            DetailRow("VIN", data.vin)
-                            DetailRow("Год", data.year.toString())
-                            DetailRow("Цвет", data.color)
-                            DetailRow("Номер", data.numberPlate)
+                            DetailRow(stringResource(R.string.brand_label), data.brand)
+                            DetailRow(stringResource(R.string.model_label), data.model)
+                            DetailRow(stringResource(R.string.vin_label), data.vin)
+                            DetailRow(stringResource(R.string.year_label_short), data.year.toString())
+                            DetailRow(stringResource(R.string.color_label), data.color)
+                            DetailRow(stringResource(R.string.plate_label), data.numberPlate)
                         }
                     }
 
@@ -155,7 +157,7 @@ fun AddCarFromSTSScreen(
                         onClick = { viewModel.confirmData() },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Верно, продолжить")
+                        Text(stringResource(R.string.correct_continue))
                     }
 
                     Spacer(Modifier.height(16.dp))
@@ -164,20 +166,21 @@ fun AddCarFromSTSScreen(
                         onClick = { navController.popBackStack() },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Ввести данные вручную")
+                        Text(stringResource(R.string.enter_manually))
                     }
                 }
 
                 AddCarFromSTSUiState.EnterMileage -> {
-                    Text("Информация об автомобиле", style = MaterialTheme.typography.titleLarge)
+                    Text(stringResource(R.string.car_info_title_short), style = MaterialTheme.typography.titleLarge)
                     Spacer(Modifier.height(24.dp))
 
                     val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
+                    val enterCorrectMileageMessage = stringResource(R.string.enter_correct_mileage)
 
                     OutlinedTextField(
                         value = mileageInput,
                         onValueChange = { mileageInput = it.filter { c -> c.isDigit() } },
-                        label = { Text("Пробег (км)") },
+                        label = { Text(stringResource(R.string.mileage_label)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -202,7 +205,7 @@ fun AddCarFromSTSScreen(
                                 )
                             } else {
                                 if (mileage == null || mileage <= 0) {
-                                    Toast.makeText(context, "Введите корректный пробег", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, enterCorrectMileageMessage, Toast.LENGTH_SHORT).show()
                                 }
                             }
                         },
@@ -212,25 +215,34 @@ fun AddCarFromSTSScreen(
                         if (isChecking) {
                             CircularProgressIndicator(modifier = Modifier.size(24.dp))
                         } else {
-                            Text("Продолжить")
+                            Text(stringResource(R.string.continue_button))
                         }
                     }
                 }
 
                 AddCarFromSTSUiState.EnterColor -> {
                     var colorError by remember { mutableStateOf<String?>(null) }
+                    val colorErrorMessage = stringResource(R.string.please_specify_color)
 
                     Column(
                         modifier = Modifier.fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("Укажите цвет автомобиля", style = MaterialTheme.typography.titleLarge)
+                        Text(stringResource(R.string.specify_car_color), style = MaterialTheme.typography.titleLarge)
                         Spacer(Modifier.height(24.dp))
 
-                        val suggestedColors = listOf("Черный", "Белый", "Серебристый", "Серый",
-                            "Красный", "Синий", "Зеленый", "Желтый")
+                        val suggestedColors = listOf(
+                            stringResource(R.string.color_black),
+                            stringResource(R.string.color_white),
+                            stringResource(R.string.color_silver),
+                            stringResource(R.string.color_gray),
+                            stringResource(R.string.color_red),
+                            stringResource(R.string.color_blue),
+                            stringResource(R.string.color_green),
+                            stringResource(R.string.color_yellow)
+                        )
 
-                        Text("Популярные цвета:", style = MaterialTheme.typography.titleSmall)
+                        Text(stringResource(R.string.popular_colors_title_short), style = MaterialTheme.typography.titleSmall)
                         Spacer(Modifier.height(8.dp))
 
                         FlowRow(
@@ -252,7 +264,7 @@ fun AddCarFromSTSScreen(
 
                         Spacer(Modifier.height(24.dp))
 
-                        Text("Или введите свой вариант:", style = MaterialTheme.typography.titleSmall)
+                        Text(stringResource(R.string.or_enter_your_own_short), style = MaterialTheme.typography.titleSmall)
                         Spacer(Modifier.height(8.dp))
 
                         OutlinedTextField(
@@ -261,7 +273,7 @@ fun AddCarFromSTSScreen(
                                 colorInput = it
                                 colorError = null
                             },
-                            label = { Text("Цвет автомобиля") },
+                            label = { Text(stringResource(R.string.color_label)) },
                             placeholder = { Text(stsData.color) },
                             modifier = Modifier.fillMaxWidth(),
                             isError = colorError != null,
@@ -277,7 +289,7 @@ fun AddCarFromSTSScreen(
                         Button(
                             onClick = {
                                 if (colorInput.isBlank()) {
-                                    colorError = "Пожалуйста, укажите цвет автомобиля"
+                                    colorError = colorErrorMessage
                                 } else {
                                     viewModel.saveColorAndContinue(colorInput)
                                 }
@@ -285,7 +297,7 @@ fun AddCarFromSTSScreen(
                             enabled = colorInput.isNotBlank(),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Продолжить")
+                            Text(stringResource(R.string.continue_button))
                         }
                     }
                 }
@@ -324,18 +336,18 @@ fun AddCarFromSTSScreen(
                         modifier = Modifier.fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("Подтверждение данных", style = MaterialTheme.typography.titleLarge)
+                        Text(stringResource(R.string.confirm_data_title_short), style = MaterialTheme.typography.titleLarge)
                         Spacer(Modifier.height(24.dp))
 
                         Card(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                DetailRow("Марка", state.vinData.brand)
-                                DetailRow("Модель", state.vinData.model)
-                                DetailRow("VIN", state.vinData.vin)
-                                DetailRow("Год", state.year.toString())
-                                DetailRow("Номер", state.number)
-                                DetailRow("Цвет", state.color)
-                                DetailRow("Пробег", "${state.mileage} км")
+                                DetailRow(stringResource(R.string.brand_label), state.vinData.brand)
+                                DetailRow(stringResource(R.string.model_label), state.vinData.model)
+                                DetailRow(stringResource(R.string.vin_label), state.vinData.vin)
+                                DetailRow(stringResource(R.string.year_label_short), state.year.toString())
+                                DetailRow(stringResource(R.string.plate_label), state.number)
+                                DetailRow(stringResource(R.string.color_label), state.color)
+                                DetailRow(stringResource(R.string.mileage_label), "${state.mileage} ${stringResource(R.string.km)}")
                             }
                         }
 
@@ -362,7 +374,7 @@ fun AddCarFromSTSScreen(
                             if (isSaving) {
                                 CircularProgressIndicator(modifier = Modifier.size(24.dp))
                             } else {
-                                Text("Добавить автомобиль")
+                                Text(stringResource(R.string.add_car_button_short))
                             }
                         }
                     }
@@ -390,12 +402,12 @@ fun AddCarFromSTSScreen(
                         )
                         Spacer(Modifier.height(16.dp))
                         Text(
-                            "Автомобиль успешно добавлен!",
+                            stringResource(R.string.car_added_success_short),
                             style = MaterialTheme.typography.titleLarge
                         )
                         Spacer(Modifier.height(12.dp))
                         Text(
-                            "Перенаправление в гараж...",
+                            stringResource(R.string.redirecting_to_garage),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -408,7 +420,7 @@ fun AddCarFromSTSScreen(
                                 }
                             }
                         ) {
-                            Text("Вернуться")
+                            Text(stringResource(R.string.return_button))
                         }
                     }
                 }

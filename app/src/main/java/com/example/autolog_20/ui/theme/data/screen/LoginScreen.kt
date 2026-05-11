@@ -23,10 +23,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.autolog_20.R
 import com.example.autolog_20.ui.theme.Error
 import com.example.autolog_20.ui.theme.OnPrimary
 import com.example.autolog_20.ui.theme.Primary
@@ -47,6 +49,9 @@ fun LoginScreen(navController: NavController) {
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
 
+    val emptyFieldsError = stringResource(R.string.error_empty_fields)
+    val networkErrorPrefix = stringResource(R.string.error_network)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -55,7 +60,7 @@ fun LoginScreen(navController: NavController) {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "AutoLog",
+            text = stringResource(R.string.app_name),
             style = MaterialTheme.typography.titleLarge,
             color = TextPrimary
         )
@@ -65,7 +70,7 @@ fun LoginScreen(navController: NavController) {
         OutlinedTextField(
             value = login,
             onValueChange = { login = it },
-            label = { Text("Login или Email") },
+            label = { Text(stringResource(R.string.login_label)) },
             modifier = Modifier.fillMaxWidth(),
             colors = TextFieldDefaults.colors(
                 focusedIndicatorColor = Primary,
@@ -80,7 +85,7 @@ fun LoginScreen(navController: NavController) {
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text("Пароль") },
+            label = { Text(stringResource(R.string.password_label)) },
             visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth(),
             colors = TextFieldDefaults.colors(
@@ -105,14 +110,13 @@ fun LoginScreen(navController: NavController) {
         Button(
             onClick = {
                 if (login.isBlank() || password.isBlank()) {
-                    errorMessage = "Заполните все поля"
+                    errorMessage = emptyFieldsError
                     return@Button
                 }
 
                 isLoading = true
                 errorMessage = null
 
-                // Запуск корутины
                 CoroutineScope(Dispatchers.Main).launch {
                     try {
                         val response = RetrofitClient.api.login(
@@ -121,7 +125,6 @@ fun LoginScreen(navController: NavController) {
 
                         if (response.isSuccessful) {
                             response.body()?.let { body ->
-                                // refresh_token приходит в cookie
                                 val refreshCookie = response.headers()["Set-Cookie"]
                                     ?.split(";")?.firstOrNull { it.contains("refresh_token") }
                                     ?.split("=")?.getOrNull(1)
@@ -144,7 +147,7 @@ fun LoginScreen(navController: NavController) {
                             errorMessage = detail
                         }
                     } catch (e: Exception) {
-                        errorMessage = "Ошибка сети: ${e.message}"
+                        errorMessage = String.format(networkErrorPrefix, e.message)
                     } finally {
                         isLoading = false
                     }
@@ -166,7 +169,7 @@ fun LoginScreen(navController: NavController) {
                     strokeWidth = 2.dp
                 )
             } else {
-                Text("Войти", fontSize = 16.sp)
+                Text(stringResource(R.string.login_button), fontSize = 16.sp)
             }
         }
 
@@ -174,7 +177,7 @@ fun LoginScreen(navController: NavController) {
 
         TextButton(onClick = { navController.navigate("register") }) {
             Text(
-                "Регистрация",
+                stringResource(R.string.register_button),
                 color = PrimaryVariant,
                 style = MaterialTheme.typography.labelLarge
             )

@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -174,15 +175,15 @@ fun CarDetailsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Автомобиль") },
+                title = { Text(stringResource(R.string.car_title)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back_description))
                     }
                 },
                 actions = {
                     IconButton(onClick = { showEditSheet = true }) {
-                        Icon(Icons.Default.Edit, contentDescription = "Редактировать")
+                        Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit_description))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -206,11 +207,11 @@ fun CarDetailsScreen(
             Spacer(Modifier.height(16.dp))
 
             FeatureTile(
-                title = "ТО",
+                title = stringResource(R.string.maintenance_to),
                 subtitle = when {
-                    nextServiceDistance == null -> "Загрузка..."
-                    nextServiceDistance!! <= 0 -> "ТО требуется!"
-                    else -> "До ТО ${nextServiceDistance} км"
+                    nextServiceDistance == null -> stringResource(R.string.loading_dots)
+                    nextServiceDistance!! <= 0 -> stringResource(R.string.maintenance_required)
+                    else -> stringResource(R.string.until_maintenance, nextServiceDistance!!)
                 },
                 icon = rememberVectorPainter(Icons.Default.Build),
                 color = TileTo,
@@ -222,7 +223,7 @@ fun CarDetailsScreen(
                 Column {
                     if (currentMileage != null) {
                         Text(
-                            text = "Текущий пробег: ${currentMileage} км",
+                            text = stringResource(R.string.current_mileage_prefix, currentMileage!!),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -231,9 +232,9 @@ fun CarDetailsScreen(
                     nextServiceDistance?.let {
                         Text(
                             text = if (it <= 0) {
-                                "Пробег превышен! Рекомендуется пройти ТО"
+                                stringResource(R.string.maintenance_overdue)
                             } else {
-                                "Рекомендуемое ТО через ${nextServiceDistance} км"
+                                stringResource(R.string.recommended_maintenance, nextServiceDistance!!)
                             },
                             style = MaterialTheme.typography.bodySmall,
                             color = if (it <= 0)
@@ -246,14 +247,14 @@ fun CarDetailsScreen(
             }
 
             FeatureTile(
-                title = "Покрышки",
+                title = stringResource(R.string.tires_title),
                 subtitle = when {
-                    !hasLocationPermission -> "Нет доступа к геолокации"
-                    TokenManager.shouldShowTireDialog(numberPlate) -> "Укажите тип резины"
-                    tireRecommendation == null -> "Проверка..."
+                    !hasLocationPermission -> stringResource(R.string.no_location_permission)
+                    TokenManager.shouldShowTireDialog(numberPlate) -> stringResource(R.string.specify_tire_type)
+                    tireRecommendation == null -> stringResource(R.string.checking_dots)
                     tireRecommendation?.shouldChangeTo != tireRecommendation?.currentTires ->
-                        "Рекомендуется смена! ${tireRecommendation?.recommendation}"
-                    else -> "Всё в порядке"
+                        stringResource(R.string.tire_change_recommended, tireRecommendation?.recommendation ?: "")
+                    else -> stringResource(R.string.tires_ok)
                 },
                 icon = painterResource(id = R.drawable.ic_action_name),
                 color = TileTires,
@@ -279,10 +280,10 @@ fun CarDetailsScreen(
                 ) {
                     Text(
                         text = when (currentTires) {
-                            "summer"    -> "Сейчас установлена: Летняя резина"
-                            "winter"    -> "Сейчас установлена: Зимняя резина"
-                            "allseason" -> "Сейчас установлена: Всесезонная резина"
-                            else        -> "Тип резины не указан"
+                            "summer"    -> stringResource(R.string.tire_summer_installed)
+                            "winter"    -> stringResource(R.string.tire_winter_installed)
+                            "allseason" -> stringResource(R.string.tire_allseason_installed)
+                            else        -> stringResource(R.string.tire_type_not_specified)
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (currentTires == null)
@@ -329,11 +330,11 @@ fun CarDetailsScreen(
             }
 
             FeatureTile(
-                title = "Расходы",
+                title = stringResource(R.string.expenses_title),
                 subtitle = when {
-                    isLoadingExpenses -> "Загрузка..."
-                    monthlyExpenses != null -> "За последний месяц"
-                    else -> "Нет данных"
+                    isLoadingExpenses -> stringResource(R.string.loading_dots)
+                    monthlyExpenses != null -> stringResource(R.string.last_month)
+                    else -> stringResource(R.string.no_expenses_data)
                 },
                 icon = rememberVectorPainter(Icons.Default.AttachMoney),
                 color = TileExpenses,
@@ -353,7 +354,7 @@ fun CarDetailsScreen(
                     }
                     monthlyExpenses != null -> {
                         Text(
-                            text = "Итого: ${String.format("%.0f", monthlyExpenses!!.totalSpent)} ₽",
+                            text = stringResource(R.string.total_expenses, monthlyExpenses!!.totalSpent),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -365,7 +366,7 @@ fun CarDetailsScreen(
                             )
                         } else {
                             Text(
-                                text = "Нет расходов за последний месяц",
+                                text = stringResource(R.string.no_expenses_last_month),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -373,7 +374,7 @@ fun CarDetailsScreen(
                     }
                     else -> {
                         Text(
-                            text = "Нет данных о расходах",
+                            text = stringResource(R.string.no_expenses_data_text),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -382,8 +383,8 @@ fun CarDetailsScreen(
             }
 
             FeatureTile(
-                title = "Пробег",
-                subtitle = if (!hasLocationPermission) "Нет доступа к геолокации" else "",
+                title = stringResource(R.string.mileage_title),
+                subtitle = if (!hasLocationPermission) stringResource(R.string.no_location_permission) else "",
                 icon = rememberVectorPainter(Icons.Default.Speed),
                 color = TileMileage,
                 expanded = expandedMileage,
@@ -398,7 +399,7 @@ fun CarDetailsScreen(
                 if (currentMileage != null) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Последний зафиксированный пробег: ${currentMileage} км",
+                        text = stringResource(R.string.last_recorded_mileage, currentMileage!!),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -406,8 +407,8 @@ fun CarDetailsScreen(
             }
 
             FeatureTile(
-                title = "Поиск автосервисов",
-                subtitle = if (!hasLocationPermission) "Нет доступа к геолокации" else "Ближайшие СТО",
+                title = stringResource(R.string.services_title),
+                subtitle = if (!hasLocationPermission) stringResource(R.string.no_location_permission) else stringResource(R.string.nearest_services),
                 icon = rememberVectorPainter(Icons.Default.LocationOn),
                 color = TileService,
                 expanded = false,
@@ -425,6 +426,7 @@ fun CarDetailsScreen(
     }
 
     if (showEditSheet && carDetail != null) {
+        val successMessage = stringResource(R.string.data_updated_success)
         EditCarBottomSheet(
             car = carDetail!!,
             onDismiss = { showEditSheet = false },
@@ -434,7 +436,7 @@ fun CarDetailsScreen(
                     numberPlate = number,
                     onSuccess = {
                         scope.launch {
-                            snackbarHostState.showSnackbar("Данные успешно обновлены")
+                            snackbarHostState.showSnackbar(successMessage)
                         }
                         showEditSheet = false
                     },
@@ -449,7 +451,6 @@ fun CarDetailsScreen(
     }
 }
 
-
 @Composable
 fun TireTypeSelectionSheet(
     currentType: String?,
@@ -457,9 +458,9 @@ fun TireTypeSelectionSheet(
     onDismiss: () -> Unit
 ) {
     val types = listOf(
-        Triple("summer",    "Летняя",    Icons.Default.WbSunny),
-        Triple("winter",    "Зимняя",    Icons.Default.AcUnit),
-        Triple("allseason", "Всесезонная", Icons.Default.Autorenew)
+        Triple("summer",    stringResource(R.string.tire_summer),    Icons.Default.WbSunny),
+        Triple("winter",    stringResource(R.string.tire_winter),    Icons.Default.AcUnit),
+        Triple("allseason", stringResource(R.string.tire_allseason), Icons.Default.Autorenew)
     )
 
     Column(
@@ -469,7 +470,7 @@ fun TireTypeSelectionSheet(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = if (currentType == null) "Выберите тип резины" else "Изменить тип резины",
+            text = if (currentType == null) stringResource(R.string.select_tire_type) else stringResource(R.string.change_tire_type),
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.padding(bottom = 24.dp)
         )
@@ -516,7 +517,7 @@ fun TireTypeSelectionSheet(
                     if (isSelected) {
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
-                            contentDescription = "Выбрано",
+                            contentDescription = stringResource(R.string.selected_desc),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(28.dp)
                         )
@@ -527,7 +528,7 @@ fun TireTypeSelectionSheet(
         Spacer(modifier = Modifier.height(32.dp))
 
         TextButton(onClick = onDismiss) {
-            Text("Позже")
+            Text(stringResource(R.string.later_button))
         }
     }
 }
@@ -545,16 +546,16 @@ fun CarHeader(car: CarDetailResponse) {
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Гос. номер: ${car.numberPlate}",
+                text = stringResource(R.string.license_plate_prefix, car.numberPlate),
                 style = MaterialTheme.typography.titleMedium
             )
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Год выпуска: ${car.yearOfManufacture}")
+                    Text(stringResource(R.string.year_of_manufacture_prefix, car.yearOfManufacture))
                 }
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Цвет: ${car.color}")
+                    Text(stringResource(R.string.color_prefix, car.color))
                 }
             }
         }
@@ -619,7 +620,7 @@ fun FeatureTile(
                     IconButton(onClick = { onExpandChange(!expanded) }) {
                         Icon(
                             imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                            contentDescription = if (expanded) "Свернуть" else "Развернуть",
+                            contentDescription = if (expanded) stringResource(R.string.collapse_desc) else stringResource(R.string.expand_desc),
                             tint = color
                         )
                     }
@@ -647,6 +648,10 @@ fun EditCarBottomSheet(
     var colorError by remember { mutableStateOf<String?>(null) }
     var numberPlateError by remember { mutableStateOf<String?>(null) }
 
+    val colorEmptyMessage = stringResource(R.string.color_empty_error)
+    val plateEmptyMessage = stringResource(R.string.plate_empty_error)
+    val plateInvalidMessage = stringResource(R.string.plate_invalid_error)
+
     fun isValidCarNumber(number: String): Boolean {
         val regex = Regex("^[АВЕКМНОРСТУХABEKMHOPCTYX]\\d{3}[АВЕКМНОРСТУХABEKMHOPCTYX]{2}\\d{2,3}$")
         return regex.matches(number.uppercase().trim())
@@ -668,7 +673,7 @@ fun EditCarBottomSheet(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Редактирование автомобиля",
+                text = stringResource(R.string.edit_car_title),
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(bottom = 24.dp)
             )
@@ -679,8 +684,8 @@ fun EditCarBottomSheet(
                     colorInput = it
                     colorError = null
                 },
-                label = { Text("Цвет") },
-                placeholder = { Text("Черный") },
+                label = { Text(stringResource(R.string.color_label_edit)) },
+                placeholder = { Text(stringResource(R.string.color_placeholder_edit)) },
                 modifier = Modifier.fillMaxWidth(),
                 isError = colorError != null,
                 supportingText = {
@@ -698,8 +703,8 @@ fun EditCarBottomSheet(
                     numberPlateInput = it.uppercase()
                     numberPlateError = null
                 },
-                label = { Text("Номер автомобиля") },
-                placeholder = { Text("А00АА78") },
+                label = { Text(stringResource(R.string.plate_label_edit)) },
+                placeholder = { Text(stringResource(R.string.plate_placeholder_edit)) },
                 modifier = Modifier.fillMaxWidth(),
                 isError = numberPlateError != null,
                 supportingText = {
@@ -709,7 +714,7 @@ fun EditCarBottomSheet(
                             color = MaterialTheme.colorScheme.error
                         )
                         numberPlateInput.isNotBlank() && !isValidCarNumber(numberPlateInput) -> Text(
-                            "Пример правильного номера: А00АА78",
+                            stringResource(R.string.plate_example_edit),
                             color = MaterialTheme.colorScheme.error
                         )
                     }
@@ -726,25 +731,23 @@ fun EditCarBottomSheet(
                     onClick = onDismiss,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Отмена")
+                    Text(stringResource(R.string.cancel_button_edit))
                 }
 
                 Button(
                     onClick = {
                         var hasError = false
 
-                        // Проверка цвета
                         if (!isColorValid(colorInput)) {
-                            colorError = "Цвет не может быть пустым (минимум 2 символа)"
+                            colorError = colorEmptyMessage
                             hasError = true
                         }
 
-                        // Проверка номера
                         if (numberPlateInput.isBlank()) {
-                            numberPlateError = "Номер автомобиля не может быть пустым"
+                            numberPlateError = plateEmptyMessage
                             hasError = true
                         } else if (!isValidCarNumber(numberPlateInput)) {
-                            numberPlateError = "Некорректный формат номера"
+                            numberPlateError = plateInvalidMessage
                             hasError = true
                         }
 
@@ -755,7 +758,7 @@ fun EditCarBottomSheet(
                     modifier = Modifier.weight(1f),
                     enabled = colorInput.isNotBlank() && numberPlateInput.isNotBlank()
                 ) {
-                    Text("Сохранить")
+                    Text(stringResource(R.string.save_button_edit))
                 }
             }
             Spacer(modifier = Modifier.height(32.dp))

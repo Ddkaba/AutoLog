@@ -40,7 +40,6 @@ fun RegisterScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     val accountCreatedText = stringResource(R.string.account_created)
-    val errorRegistrationText = stringResource(R.string.error_registration_failed)
     val registerTitle = stringResource(R.string.register_title)
     val usernameLabel = stringResource(R.string.username)
     val emailLabel = stringResource(R.string.email)

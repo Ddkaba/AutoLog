@@ -3,7 +3,6 @@ package com.example.autolog_20.ui.theme.data.screen
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -37,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -50,8 +50,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
+import com.example.autolog_20.R
 import com.example.autolog_20.ui.theme.data.api.RetrofitClient
-import com.example.autolog_20.ui.theme.data.model.AddCarByVinUiState
 import com.example.autolog_20.ui.theme.data.model.AddCarManualUiState
 import com.example.autolog_20.ui.theme.data.model.viewmodel.AddCarManualViewModel
 import com.example.autolog_20.ui.theme.data.model.viewmodel.DrivingSurveyViewModel
@@ -72,36 +72,41 @@ fun AddCarManualScreen(navController: NavController) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val surveyViewModel: DrivingSurveyViewModel = viewModel()
 
+    val defaultFuelType = stringResource(R.string.fuel_petrol)
+
     var vinInput by remember { mutableStateOf("") }
     var brandInput by remember { mutableStateOf("") }
     var modelInput by remember { mutableStateOf("") }
-    var fuelTypeInput by remember { mutableStateOf("Бензин") }
+    var fuelTypeInput by remember { mutableStateOf(defaultFuelType) }
     var mileageInput by remember { mutableStateOf("") }
     var yearInput by remember { mutableStateOf("") }
     var numberInput by remember { mutableStateOf("") }
     var colorInput by remember { mutableStateOf("") }
     var expanded by remember { mutableStateOf(false) }
 
-    val fuelTypes = listOf("Бензин", "Дизель", "Гибрид")
+    val fuelTypes = listOf(
+        stringResource(R.string.fuel_petrol),
+        stringResource(R.string.fuel_diesel),
+        stringResource(R.string.fuel_hybrid)
+    )
     val fuelTypeMap = mapOf(
-        "Бензин" to "Petrol",
-        "Дизель" to "Diesel",
-        "Гибрид" to "Hybrid"
+        stringResource(R.string.fuel_petrol) to "Petrol",
+        stringResource(R.string.fuel_diesel) to "Diesel",
+        stringResource(R.string.fuel_hybrid) to "Hybrid"
     )
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Добавление авто") },
+                title = { Text(stringResource(R.string.add_car_manual_title)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, "Назад")
+                        Icon(Icons.Default.ArrowBack, stringResource(R.string.back_button_manual))
                     }
                 }
             )
         }
     ) { padding ->
-        // Убираем verticalScroll из основного Column
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -114,45 +119,41 @@ fun AddCarManualScreen(navController: NavController) {
                 is AddCarManualUiState.Error,
                 is AddCarManualUiState.Loading,
                 is AddCarManualUiState.VinAlreadyExistsError -> {
-                    // Добавляем скролл только для этого блока
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
                     ) {
-                        Text("Введите данные автомобиля", style = MaterialTheme.typography.titleLarge)
+                        Text(stringResource(R.string.enter_car_data), style = MaterialTheme.typography.titleLarge)
                         Spacer(Modifier.height(24.dp))
 
-                        // Поле для VIN
                         OutlinedTextField(
                             value = vinInput,
                             onValueChange = { vinInput = it.uppercase().filter { c -> c.isLetterOrDigit() } },
-                            label = { Text("VIN (17 символов)") },
-                            placeholder = { Text("WAUZZZF55LA007770") },
+                            label = { Text(stringResource(R.string.vin_17_symbols_hint)) },
+                            placeholder = { Text(stringResource(R.string.vin_placeholder_manual)) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
 
                         Spacer(Modifier.height(16.dp))
 
-                        // Поле для марки
                         OutlinedTextField(
                             value = brandInput,
                             onValueChange = { brandInput = it },
-                            label = { Text("Марка") },
-                            placeholder = { Text("Toyota") },
+                            label = { Text(stringResource(R.string.brand_label_manual)) },
+                            placeholder = { Text(stringResource(R.string.brand_placeholder)) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
 
                         Spacer(Modifier.height(16.dp))
 
-                        // Поле для модели
                         OutlinedTextField(
                             value = modelInput,
                             onValueChange = { modelInput = it },
-                            label = { Text("Модель") },
-                            placeholder = { Text("Camry") },
+                            label = { Text(stringResource(R.string.model_label_manual)) },
+                            placeholder = { Text(stringResource(R.string.model_placeholder)) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -167,7 +168,7 @@ fun AddCarManualScreen(navController: NavController) {
                                 value = fuelTypeInput,
                                 onValueChange = {},
                                 readOnly = true,
-                                label = { Text("Тип топлива") },
+                                label = { Text(stringResource(R.string.fuel_type_label_manual)) },
                                 trailingIcon = {
                                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                                 },
@@ -217,10 +218,10 @@ fun AddCarManualScreen(navController: NavController) {
                                         )
                                         Spacer(Modifier.height(8.dp))
                                         Text(
-                                            text = "Найден существующий автомобиль:\n" +
+                                            text = stringResource(R.string.existing_car_found_manual) + "\n" +
                                                     "${state.existingCar.brand} ${state.existingCar.model}\n" +
-                                                    "Год: ${state.existingCar.year_of_manufacture}\n" +
-                                                    "Номер: ${state.existingCar.number_plate}",
+                                                    "${stringResource(R.string.year_label_manual)}: ${state.existingCar.year_of_manufacture}\n" +
+                                                    "${stringResource(R.string.plate_label_manual)}: ${state.existingCar.number_plate}",
                                             style = MaterialTheme.typography.bodySmall
                                         )
                                     }
@@ -249,7 +250,7 @@ fun AddCarManualScreen(navController: NavController) {
                             if (state is AddCarManualUiState.Loading) {
                                 CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
                             } else {
-                                Text("Продолжить")
+                                Text(stringResource(R.string.continue_button_manual))
                             }
                         }
                     }
@@ -263,15 +264,15 @@ fun AddCarManualScreen(navController: NavController) {
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
                     ) {
-                        Text("Проверьте данные", style = MaterialTheme.typography.titleLarge)
+                        Text(stringResource(R.string.check_data_title), style = MaterialTheme.typography.titleLarge)
                         Spacer(Modifier.height(24.dp))
 
                         Card(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(20.dp)) {
-                                DetailRow("Марка", preview.brand)
-                                DetailRow("Модель", preview.model)
-                                DetailRow("VIN", preview.vin)
-                                DetailRow("Тип топлива", fuelTypeInput)
+                                DetailRow(stringResource(R.string.brand_label_manual), preview.brand)
+                                DetailRow(stringResource(R.string.model_label_manual), preview.model)
+                                DetailRow(stringResource(R.string.vin_label), preview.vin)
+                                DetailRow(stringResource(R.string.fuel_type_label_manual), fuelTypeInput)
                             }
                         }
 
@@ -281,7 +282,7 @@ fun AddCarManualScreen(navController: NavController) {
                             onClick = { viewModel.confirmCar() },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Верно, продолжить")
+                            Text(stringResource(R.string.correct_continue_manual))
                         }
 
                         Spacer(Modifier.height(16.dp))
@@ -290,7 +291,7 @@ fun AddCarManualScreen(navController: NavController) {
                             onClick = { viewModel.resetToInput() },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Изменить данные")
+                            Text(stringResource(R.string.change_data_manual))
                         }
                     }
                 }
@@ -301,15 +302,13 @@ fun AddCarManualScreen(navController: NavController) {
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
                     ) {
-                        Text("Информация об автомобиле", style = MaterialTheme.typography.titleLarge)
+                        Text(stringResource(R.string.car_info_manual), style = MaterialTheme.typography.titleLarge)
                         Spacer(Modifier.height(24.dp))
-
-                        val currentYear = java.util.Calendar.getInstance().get(java.util.Calendar.YEAR)
 
                         OutlinedTextField(
                             value = mileageInput,
                             onValueChange = { mileageInput = it.filter { c -> c.isDigit() } },
-                            label = { Text("Пробег (км)") },
+                            label = { Text(stringResource(R.string.mileage_label_manual)) },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -319,8 +318,8 @@ fun AddCarManualScreen(navController: NavController) {
                         OutlinedTextField(
                             value = yearInput,
                             onValueChange = { yearInput = it.filter { c -> c.isDigit() }.take(4) },
-                            label = { Text("Год выпуска") },
-                            placeholder = { Text("2020") },
+                            label = { Text(stringResource(R.string.year_label_manual)) },
+                            placeholder = { Text(stringResource(R.string.year_placeholder_manual)) },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -330,8 +329,8 @@ fun AddCarManualScreen(navController: NavController) {
                         OutlinedTextField(
                             value = numberInput,
                             onValueChange = { numberInput = it.uppercase() },
-                            label = { Text("Номер автомобиля") },
-                            placeholder = { Text("A000AA78") },
+                            label = { Text(stringResource(R.string.plate_label_manual)) },
+                            placeholder = { Text(stringResource(R.string.plate_placeholder_manual)) },
                             modifier = Modifier.fillMaxWidth()
                         )
 
@@ -348,13 +347,14 @@ fun AddCarManualScreen(navController: NavController) {
                             enabled = mileageInput.isNotBlank() && yearInput.length == 4 && numberInput.isNotBlank(),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Продолжить")
+                            Text(stringResource(R.string.continue_button_manual))
                         }
                     }
                 }
 
                 is AddCarManualUiState.EnterColor -> {
                     var colorError by remember { mutableStateOf<String?>(null) }
+                    val colorErrorMessage = stringResource(R.string.please_specify_color_manual)
 
                     Column(
                         modifier = Modifier
@@ -362,25 +362,33 @@ fun AddCarManualScreen(navController: NavController) {
                             .verticalScroll(rememberScrollState())
                     ) {
                         Text(
-                            text = "Укажите цвет автомобиля",
+                            text = stringResource(R.string.specify_car_color_manual),
                             style = MaterialTheme.typography.titleLarge
                         )
 
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Text(
-                            text = "Это поможет при идентификации автомобиля",
+                            text = stringResource(R.string.color_description_manual),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
                         Spacer(modifier = Modifier.height(32.dp))
 
-                        val suggestedColors = listOf("Черный", "Белый", "Серебристый", "Серый",
-                            "Красный", "Синий", "Зеленый", "Желтый")
+                        val suggestedColors = listOf(
+                            stringResource(R.string.color_black),
+                            stringResource(R.string.color_white),
+                            stringResource(R.string.color_silver),
+                            stringResource(R.string.color_gray),
+                            stringResource(R.string.color_red),
+                            stringResource(R.string.color_blue),
+                            stringResource(R.string.color_green),
+                            stringResource(R.string.color_yellow)
+                        )
 
                         Text(
-                            text = "Популярные цвета:",
+                            text = stringResource(R.string.popular_colors_manual),
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -408,7 +416,7 @@ fun AddCarManualScreen(navController: NavController) {
                         Spacer(modifier = Modifier.height(24.dp))
 
                         Text(
-                            text = "Или введите свой вариант:",
+                            text = stringResource(R.string.or_enter_your_own_manual),
                             style = MaterialTheme.typography.titleSmall,
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -421,8 +429,8 @@ fun AddCarManualScreen(navController: NavController) {
                                 colorInput = it
                                 colorError = null
                             },
-                            label = { Text("Цвет автомобиля") },
-                            placeholder = { Text("Например: Темно-синий металлик") },
+                            label = { Text(stringResource(R.string.color_label)) },
+                            placeholder = { Text(stringResource(R.string.color_hint_manual)) },
                             modifier = Modifier.fillMaxWidth(),
                             isError = colorError != null,
                             supportingText = {
@@ -437,7 +445,7 @@ fun AddCarManualScreen(navController: NavController) {
                         Button(
                             onClick = {
                                 if (colorInput.isBlank()) {
-                                    colorError = "Пожалуйста, укажите цвет автомобиля"
+                                    colorError = colorErrorMessage
                                 } else {
                                     viewModel.saveColorAndContinue(colorInput)
                                 }
@@ -445,7 +453,7 @@ fun AddCarManualScreen(navController: NavController) {
                             enabled = colorInput.isNotBlank(),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Продолжить")
+                            Text(stringResource(R.string.continue_button_manual))
                         }
                     }
                 }
@@ -485,27 +493,27 @@ fun AddCarManualScreen(navController: NavController) {
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
                     ) {
-                        Text("Подтверждение данных", style = MaterialTheme.typography.titleLarge)
+                        Text(stringResource(R.string.confirm_data_manual), style = MaterialTheme.typography.titleLarge)
                         Spacer(Modifier.height(24.dp))
 
                         Card(modifier = Modifier.fillMaxWidth()) {
                             Column(modifier = Modifier.padding(20.dp)) {
                                 Text(
-                                    text = "Основная информация",
+                                    text = stringResource(R.string.basic_info_manual),
                                     style = MaterialTheme.typography.titleMedium,
                                     color = MaterialTheme.colorScheme.primary
                                 )
                                 Spacer(Modifier.height(12.dp))
-                                DetailRow("Марка", state.summary.vinData.brand)
-                                DetailRow("Модель", state.summary.vinData.model)
-                                DetailRow("VIN", state.summary.vinData.vin)
-                                DetailRow("Тип топлива", state.summary.fuelType)
-                                DetailRow("Пробег", "${state.summary.mileage} км")
-                                DetailRow("Год выпуска", "${state.summary.year}")
-                                DetailRow("Номер", state.summary.number)
-                                DetailRow("Цвет", state.summary.color)
-                                DetailRow("Привод", state.summary.driveType ?: "Не указан")
-                                DetailRow("Коробка передач", state.summary.transmission ?: "Не указана")
+                                DetailRow(stringResource(R.string.brand_label_manual), state.summary.vinData.brand)
+                                DetailRow(stringResource(R.string.model_label_manual), state.summary.vinData.model)
+                                DetailRow(stringResource(R.string.vin_label), state.summary.vinData.vin)
+                                DetailRow(stringResource(R.string.fuel_type_label_manual), state.summary.fuelType)
+                                DetailRow(stringResource(R.string.mileage_label_manual), "${state.summary.mileage} ${stringResource(R.string.km)}")
+                                DetailRow(stringResource(R.string.year_label_manual), "${state.summary.year}")
+                                DetailRow(stringResource(R.string.plate_label_manual), state.summary.number)
+                                DetailRow(stringResource(R.string.color_label), state.summary.color)
+                                DetailRow(stringResource(R.string.drive_type_manual), state.summary.driveType ?: stringResource(R.string.not_specified_manual))
+                                DetailRow(stringResource(R.string.transmission_manual), state.summary.transmission ?: stringResource(R.string.not_specified_female))
                             }
                         }
 
@@ -532,7 +540,7 @@ fun AddCarManualScreen(navController: NavController) {
                             if (isSaving) {
                                 CircularProgressIndicator(modifier = Modifier.size(24.dp))
                             } else {
-                                Text("Добавить автомобиль")
+                                Text(stringResource(R.string.add_car_button_manual))
                             }
                         }
 
@@ -542,7 +550,7 @@ fun AddCarManualScreen(navController: NavController) {
                             onClick = { viewModel.resetToInput() },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("Изменить данные")
+                            Text(stringResource(R.string.change_data_manual))
                         }
                     }
                 }
@@ -560,7 +568,7 @@ fun AddCarManualScreen(navController: NavController) {
                     ) {
                         Icon(Icons.Default.CheckCircle, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(80.dp))
                         Spacer(Modifier.height(16.dp))
-                        Text("Автомобиль успешно добавлен!", style = MaterialTheme.typography.titleLarge)
+                        Text(stringResource(R.string.car_added_success_manual), style = MaterialTheme.typography.titleLarge)
                     }
                 }
             }

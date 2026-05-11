@@ -27,9 +27,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.autolog_20.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,10 +54,10 @@ fun AddCarByScanDataScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("@string/data_from_STS") },
+                title = { Text(stringResource(R.string.data_from_STS)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, "@string/back")
+                        Icon(Icons.Default.ArrowBack, stringResource(R.string.back))
                     }
                 }
             )
@@ -70,14 +72,14 @@ fun AddCarByScanDataScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "@string/data_from_STS",
+                text = stringResource(R.string.data_from_STS),
                 style = MaterialTheme.typography.headlineMedium
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "@string/check_data",
+                text = stringResource(R.string.check_data),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -92,7 +94,7 @@ fun AddCarByScanDataScreen(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "@string/info_about_car",
+                        text = stringResource(R.string.info_about_car),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.primary
@@ -108,7 +110,7 @@ fun AddCarByScanDataScreen(
                         isError = editableVin.length != 17 && editableVin.isNotEmpty(),
                         supportingText = {
                             if (editableVin.length != 17 && editableVin.isNotEmpty()) {
-                                Text("@string/vin_17")
+                                Text(stringResource(R.string.vin_17))
                             }
                         }
                     )
@@ -118,7 +120,7 @@ fun AddCarByScanDataScreen(
                     OutlinedTextField(
                         value = editableBrand,
                         onValueChange = { editableBrand = it },
-                        label = { Text("@string/brand") },
+                        label = { Text(stringResource(R.string.brand)) },
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -127,7 +129,7 @@ fun AddCarByScanDataScreen(
                     OutlinedTextField(
                         value = editableModel,
                         onValueChange = { editableModel = it },
-                        label = { Text("@string/brand") },
+                        label = { Text(stringResource(R.string.brand)) },
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -136,7 +138,7 @@ fun AddCarByScanDataScreen(
                     OutlinedTextField(
                         value = editableYear,
                         onValueChange = { editableYear = it.filter { char -> char.isDigit() }.take(4) },
-                        label = { Text("@string/manufacture_year") },
+                        label = { Text(stringResource(R.string.manufacture_year)) },
                         modifier = Modifier.fillMaxWidth(),
                         isError = editableYear.isNotEmpty() &&
                                 (editableYear.length != 4 || editableYear.toIntOrNull() !in 1900..2028),
@@ -144,10 +146,10 @@ fun AddCarByScanDataScreen(
                             if (editableYear.isNotEmpty() && editableYear.length == 4) {
                                 val yearInt = editableYear.toIntOrNull()
                                 if (yearInt != null && yearInt !in 1900..2028) {
-                                    Text("@string/uncorrected_year")
+                                    Text(stringResource(R.string.uncorrected_year))
                                 }
                             } else if (editableYear.isNotEmpty() && editableYear.length != 4) {
-                                Text("@string/year_4")
+                                Text(stringResource(R.string.year_4))
                             }
                         }
                     )
@@ -157,7 +159,7 @@ fun AddCarByScanDataScreen(
                     OutlinedTextField(
                         value = editableColor,
                         onValueChange = { editableColor = it },
-                        label = { Text("@string/color") },
+                        label = { Text(stringResource(R.string.color)) },
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -166,14 +168,14 @@ fun AddCarByScanDataScreen(
                     OutlinedTextField(
                         value = editableNumberPlate,
                         onValueChange = { editableNumberPlate = it.uppercase() },
-                        label = { Text("@string/number") },
+                        label = {Text(stringResource(R.string.number)) },
                         modifier = Modifier.fillMaxWidth(),
                         isError = editableNumberPlate.isNotEmpty() &&
                                 !Regex("^[АВЕКМНОРСТУХ]\\d{3}[АВЕКМНОРСТУХ]{2}\\d{2,3}$").matches(editableNumberPlate),
                         supportingText = {
                             if (editableNumberPlate.isNotEmpty() &&
                                 !Regex("^[АВЕКМНОРСТУХ]\\d{3}[АВЕКМНОРСТУХ]{2}\\d{2,3}$").matches(editableNumberPlate)) {
-                                Text("@string/uncorrected_number")
+                                Text(stringResource(R.string.uncorrected_number))
                             }
                         }
                     )
@@ -202,7 +204,7 @@ fun AddCarByScanDataScreen(
                         editableColor.isNotBlank() &&
                         editableNumberPlate.isNotBlank()
             ) {
-                Text("@string/conti")
+                Text(stringResource(R.string.conti))
             }
         }
     }
